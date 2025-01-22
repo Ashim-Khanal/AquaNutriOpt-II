@@ -1001,7 +1001,7 @@ class EPA:
         elif self.Objective == 'N':
             self.run_scriptTN()  # Call script or function for objective 2
         else:
-            raise ValueError("Objective for Input Generator set.")
+            raise ValueError("Objective for Input Generator set incorrectly.")
 
         self.BMP_Selection()
 
@@ -1044,6 +1044,22 @@ class EPA:
 
         print("*****INPUT FILES GENERATED********")
 
+    def WAM_InputGenerator_MO(self, TimePeriod = 1):
+        self.TimePeriod = TimePeriod
+        subprocess.run(["python", "WAM_Network_Automation_MO.py"])
+        self.BMP_Selection_MO()
+        data = "WAM/Outputs/WAM_final_output_multiple_obj_optim.csv"
+        output_file = "NetworkInfo.csv"
+        # Open the source file in read mode and the destination file in write mode
+        with open(data, 'r') as src, open(output_file, 'w') as dest:
+            # Read from the source and write to the destination
+            for line in src:
+                dest.write(line)
+        self.run_GenInputMO()
+
+    def run_GenInputMO(self):
+        subprocess.run(["python", "GenInputMO.py", str(self.TimePeriod)])
+
     #### Osama and Long's Script
     def run_scriptTP(self):
         subprocess.run(["python", "WAM_Network_Automation_TP.py"])
@@ -1051,9 +1067,9 @@ class EPA:
     def run_scriptTN(self):
         subprocess.run(["python", "WAM_Network_Automation_TN.py"])
     ######
-
     def run_GenInputSO(self):
         subprocess.run(["python", "GenInputSO.py", str(self.TimePeriod)])
+
 
 
     def BMP_Selection(self): # jiayi's Code
@@ -1082,9 +1098,26 @@ class EPA:
         # Display the filtered BMPs
         # print(filtered_bmps)
         # %%
+    def BMP_Selection_MO(self): # jiayi's Code
+        # %%
+        try:
+            usace_bmp_path = 'BMP_database/USACE_BMP_database.csv'
+            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
+        except:
+            raise ValueError("File can not be created. Input to Objective for WAM_InputGenerator_SO")
 
-
-
+        usace_bmp_df = pd.read_csv(usace_bmp_path)
+        wam_luid_df = pd.read_csv(wam_luid_path)
+        # %%
+        # Filter BMPs based on the LUIDs provided in the WAM_unique_LUID_optim_TN file
+        selected_luids = wam_luid_df['LUID']
+        filtered_bmps = usace_bmp_df[usace_bmp_df['LU_CODE'].isin(selected_luids)]
+        # %%
+        # Save the filtered BMPs to a new CSV file (optional)
+        try:
+            filtered_bmps.to_csv('BMPsInfo.csv', index=False)
+        except:
+            print("BMPsInfo can not be created")
 # %%
 def IsSubset(X, Y):
     return len(np.setdiff1d(X, Y)) == 0
