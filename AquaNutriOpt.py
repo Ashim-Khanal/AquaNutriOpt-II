@@ -3,6 +3,12 @@ import pulp
 import os
 import sys
 import time
+import math
+import subprocess
+#from utils import *
+import pandas as pd
+
+
 BigM = 9999
 class EPA:
     def __init__(self):
@@ -15,8 +21,13 @@ class EPA:
         self.C = np.Inf
         self.budgetList = []
         self.writefiles = True
-        #self.Solver =
+        self.Correction_Factor_P = 0.55
+        self.Correction_Factor_N = 1.05
+        self.timeLimit = 10
     # %%
+    def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
+        self.timeLimit = timeLimit
+
     def Solve_SO_Det_Model(self, Budget=np.Inf):
         if Budget == np.Inf:
             pass
@@ -102,8 +113,10 @@ class EPA:
         print('**************************************************************')
         print('**************************************************************')
 
+
+        self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit)
         #solver = pulp.get_solver(self.Solver)
-        Sol = MODEL.solve()
+        Sol = MODEL.solve(self.solver)
 
         print('**************************************************************')
         print('**************************************************************')
@@ -131,7 +144,7 @@ class EPA:
             for i in self.NNn_i[j]:
                 try:
                     #            print('{} ==> {} : {}'.format(i, j, Fijm[(i,j,'P')].value() ) )
-                    file.write('{}_{} {}\n'.format(i, j, str(Fijm[(i, j, 'P')].value())))
+                    file.write('{}_{} {}\n'.format(i, j, str(Fijm[(i, j, 'P')*self.Correction_Factor_P].value())))
                 except:
                     pass
 
@@ -151,10 +164,12 @@ class EPA:
         elif self.TimePeriod < 1:
             print("Please Enter the value of Time greater or equal to 1")
             return "Null"
+        print("time period =", self.TimePeriod)
         if Budget == np.Inf:
             pass
         else:
             self.C = Budget
+
         #self.Solver = Solver
         print('**************************************************************')
         print('**************************************************************')
@@ -238,8 +253,9 @@ class EPA:
         print('**************************************************************')
         print('**************************************************************')
 
-        #solver = pulp.get_solver(self.Solver)
-        Sol = MODEL.solve()
+        self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit = self.timeLimit)
+        #solver = pulp.get_solver(self.solver)
+        Sol = MODEL.solve(self.solver)
         self.TargetLoad = MODEL.objective.value()
         print('**************************************************************')
         print('**************************************************************')
@@ -285,20 +301,40 @@ class EPA:
         if self.TimePeriod <= 4:
             BigM = 99999
         else:
-            BigM = 99999
-        epsilon = 0.0001
+            BigM = 999999
+        epsilon = 0.000001
         self.writefiles = False
+
+
+        # #if self.TimePeriod > 1:
+        #     self.MOTI_TL = 10 * math.log(self.TimePeriod)
+        #     self.MOTI_loop_TL = 2 * 10 * math.log(self.TimePeriod) * len(self.budgetList)
+        # else:
+        #     self.MOTI_TL = 10
+        #     self.MOTI_loop_TL = 2 * 10 * len(self.budgetList)
+
 
         # Setting the target node
         self.Set_TargetLocation('1')
-        bounddata = open('singleObjResults.csv', 'w+')
+
+        current_dir = os.getcwd()
+        new_dir = 'MOOResults'
+        # Construct the full path to the new folder
+        self.MOOPATH = os.path.join(current_dir, new_dir)
+        # Create the new folder
+        if not os.path.exists(self.MOOPATH):
+            os.makedirs(self.MOOPATH)
+
+        file_name = 'singleObjResults.csv'
+        file_path = os.path.join(self.MOOPATH, file_name)
+
+        bounddata = open(file_path, 'w+')
         for item in self.MM:
             ZZ = [item]
             self.Set_Objective(item)
-            self.Set_BoundedMeasures([itm for itm in self.MM if itm not in ZZ ], [99999])
+            self.Set_BoundedMeasures([itm for itm in self.MM if itm not in ZZ], [99999])
             for values in self.budgetList:
                 self.Solve_SOTI_Det_Model(values)
-                #self.Set_Cost_Budget(1500000)
                 self.singleObjResults.append(self.TargetLoad)
 
         bounddata.write('Budget, P, N\n')
@@ -311,7 +347,8 @@ class EPA:
         time.sleep(1)
 
         """Read the bound data (single objective results) for P and N w.r.t their budgets"""
-        bounddata = open('singleObjResults.csv')
+
+        bounddata = open(file_path)
         bounddata.readline()  # reading the header (the name of the header is of no concern to the algorithm.
         PhosphorusBound = []
         NitrogenBound = []
@@ -399,25 +436,33 @@ class EPA:
         print('**************************************************************')
         print('**************************************************************')
 
-        """ Run the multi-objective optimization automation loop"""
-        file1 = open('allPointsWithBounds.csv', 'w+')
+        self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit=self.timeLimit)
+
+        """ Run the multi-objective optimization automation loop """
+        file_name = 'allPointsWithBounds.csv'
+        file_path = os.path.join(self.MOOPATH, file_name)
+        file1 = open(file_path, 'w+')
         for item in self.MM:
             ZZ = [item]  # Set of Objectives
             ZZp = [itm for itm in self.MM if itm not in ZZ]  # Set of bounded measures
             # Objective
             MODEL.setObjective(
                 pulp.lpSum([FijmTime[(i, self.L, ZZ[0], Time)] for i in self.NNn_i[self.L] for Time in range(self.TimePeriod)]))
+
+            #start_time = time.time()
+
             if item == 'P':
                 for nb in NitrogenBound:
+                    #if time.time() - start_time <= self.MOTI_loop_TL / 2:
                     self.Um[ZZp[0]] = nb[1]
                     budgetLB = nb[0]
                     # Cons. 3
                     for m in ZZp:
                         # MODEL += pulp.lpSum([FijmTime[(i, L, m, Time)] for i in self.NNn_i[L] for Time in range(self.TimePeriod)]) <= (self.Um[m]*(1+epsilon)+epsilon), 'C3'
                         MODEL += pulp.lpSum(
-                            [FijmTime[(i, self.L, m, Time)] for i in self.NNn_i[self.L] for Time in range(self.TimePeriod)]) <= self.Um[m], 'C3'
+                            [FijmTime[(i, self.L, m, Time)] for i in self.NNn_i[self.L] for Time in range(self.TimePeriod)]) <= self.Um[m]*(1+epsilon), 'C3'
                     file1.write("****************************************************\n")
-                    file1.write('Nitrogen is bounded to ' + str(round(self.Um['N'],3)) + ' and P is minimized\n')
+                    file1.write('Nitrogen is bounded to ' + str(round(self.Um['N']*(1+epsilon),3)) + ' and P is minimized\n')
                     file1.write("****************************************************\n")
                     file1.write('Budget, PhosphporusLoading, NitrogenLoading\n')
                     for budget in NitrogenBound:
@@ -427,7 +472,8 @@ class EPA:
                             # Cons. 4
                             MODEL += pulp.lpSum([self.Cit[(i, t)] * Xit[(i, t)] for i in self.NN for t in self.TTi[i]]) <= C, 'C4'
 
-                            Sol = MODEL.solve()
+                            Sol = MODEL.solve(self.solver)
+
                             minimalLoadP = MODEL.objective.value()
                             del MODEL.constraints['C4']
                             ## print(MODEL.status)
@@ -438,8 +484,10 @@ class EPA:
                             # print('{} in Lake when {} bound is {} for budget {}  = {}'.format('P','N',self.Um['N'], C, MODEL.objective.value()))
                             # print("Nitrogen Value is", nitrogenValue)
                             allpoints.append((C, round(minimalLoadP, 3), round(nitrogenValue, 3)))
-                            bounds.append('N_' + str(round(self.Um['N'],3)))
-                            BMPfile = open('BMPs_' + str(C) + 'bound_N_' + str(round(self.Um['N'],3)) + '.txt', 'w+')
+                            bounds.append('N_' + str(round(self.Um['N']*(1+epsilon),3)))
+                            file_name = 'BMPs_' + str(C) + 'bound_N_' + str(round(self.Um['N']*(1+epsilon),3)) + '.txt'
+                            file_path = os.path.join(self.MOOPATH,file_name)
+                            BMPfile = open(file_path, 'w+')
                             CounterP = 0
                             BMPfile.write('Node, BMPs\n')
                             for i in self.NN:
@@ -461,8 +509,9 @@ class EPA:
                                         CounterP = CounterP + 1
                                         # print('Location i = {}, Technology t = {} => {}'.format(i, t, 0))
                             BMPfile.close()
-
-                            Flowfile = open('Flow_P' + str(C) + 'bound_N_' + str(round(self.Um['N'],3)) + '.txt', 'w+')
+                            file_name = 'Flow_P' + str(C) + 'bound_N_' + str(round(self.Um['N']*(1+epsilon),3)) + '.txt'
+                            file_path = os.path.join(self.MOOPATH, file_name)
+                            Flowfile = open(file_path, 'w+')
                             for j in self.NN:
                                 for i in self.NNn_i[j]:
                                     try:
@@ -474,17 +523,22 @@ class EPA:
                                         # print('{} ==> {} : {}'.format(i, j, 0))
                             Flowfile.close()
                     del MODEL.constraints['C3']
+                    #else:
+                        #print("****Time Limit for Multi-objective optimization loop exceeded****")
+                        #break
 
             elif item == 'N':
+                #start_time = time.time()
                 for pb in PhosphorusBound:
+                    #if time.time() - start_time <= self.MOTI_loop_TL / 2:
                     self.Um[ZZp[0]] = pb[1]
                     budgetLB = pb[0]
                     # Cons. 3
                     for m in ZZp:
                         MODEL += pulp.lpSum(
-                            [FijmTime[(i, self.L, m, Time)] for i in self.NNn_i[self.L] for Time in range(self.TimePeriod)]) <= self.Um[m], 'C3'
+                            [FijmTime[(i, self.L, m, Time)] for i in self.NNn_i[self.L] for Time in range(self.TimePeriod)]) <= self.Um[m]*(1+epsilon), 'C3'
                     file1.write("******************************************************\n")
-                    file1.write('Phosphorous is bounded to ' + str(round(self.Um['P'],3)) + ' and N is minimized\n')
+                    file1.write('Phosphorous is bounded to ' + str(round(self.Um['P']*(1+epsilon),3)) + ' and N is minimized\n')
                     file1.write("******************************************************\n")
                     file1.write('Budget, PhosphporusLoading, NitrogenLoading\n')
                     for budget in PhosphorusBound:
@@ -494,7 +548,8 @@ class EPA:
                             # Cons. 4
                             MODEL += pulp.lpSum([self.Cit[(i, t)] * Xit[(i, t)] for i in self.NN for t in self.TTi[i]]) <= C, 'C4'
 
-                            Sol = MODEL.solve()
+                            Sol = MODEL.solve(self.solver)
+
                             minimalLoadN = MODEL.objective.value()
                             del MODEL.constraints['C4']
                             ## print(MODEL.status)
@@ -502,11 +557,14 @@ class EPA:
                                 FijmTime[(i, self.L, m, Time)].varValue for i in self.NNn_i[self.L] for Time in range(self.TimePeriod))
                             file1.write(str(C) + ',' + str(round(phosphorousValue,3)) + ',' + str(round(minimalLoadN,3)) + '\n')
                             allpoints.append((C, round(phosphorousValue, 3), round(minimalLoadN, 3)))
-                            bounds.append('P_' + str(round(self.Um['P'],3)))
+                            bounds.append('P_' + str(round(self.Um['P']*(1+epsilon),3)))
                             # print('{} in Lake when {} bound is {} for budget {}  = {}'.format('N','P',self.Um['P'], C, MODEL.objective.value()))
                             # print("Phosphorous Value is", phosphorousValue)
 
-                            BMPfile = open('BMPs_' + str(C) + 'bound_P_' + str(round(self.Um['P'],3)) + '.txt', 'w+')
+                            file_name = 'BMPs_' + str(C) + 'bound_P_' + str(round(self.Um['P']*(1+epsilon),3)) + '.txt'
+                            file_path = os.path.join(self.MOOPATH, file_name)
+
+                            BMPfile = open(file_path, 'w+')
                             BMPfile.write('Node, BMPs\n')
                             CounterN = 0
                             for i in self.NN:
@@ -528,7 +586,9 @@ class EPA:
                                         # print('Location i = {}, Technology t = {} => {}'.format(i, t, 0))
                             BMPfile.close()
 
-                            Flowfile = open('Flow_N' + str(C) + 'bound_P_' + str(round(self.Um['P'],3)) + '.txt', 'w+')
+                            file_name = 'Flow_N' + str(C) + 'bound_P_' + str(round(self.Um['P'] * (1 + epsilon), 3)) + '.txt'
+                            file_path = os.path.join(self.MOOPATH, file_name)
+                            Flowfile = open(file_path, 'w+')
                             for j in self.NN:
                                 for i in self.NNn_i[j]:
                                     try:
@@ -540,10 +600,16 @@ class EPA:
                                         # print('{} ==> {} : {}'.format(i, j, 0))
                             Flowfile.close()
                     del MODEL.constraints['C3']
+                    #else:
+                        #print("****Time Limit for Multi-objective optimization loop exceeded****")
+                        #break
+
         file1.close()
 
     #def find_non_dominated(points, bounds):
-        file2 = open('NonDominatedPoints.csv', 'w+')
+        file_name = 'NonDominatedPoints.csv'
+        file_path = os.path.join(self.MOOPATH, file_name)
+        file2 = open(file_path, 'w+')
         file2.write('Budget, PhosphorousLoad, NitrogenLoad, Bounds\n')
 
         # non_dominated = []
@@ -554,16 +620,140 @@ class EPA:
                     dominated = True
                     break
             if not dominated:
-                file2.write(str(allpoints[i]) + ',' + str(bounds[i]) + '\n')
+                file2.write(str(allpoints[i][0]) + ',' + str(allpoints[i][1]) + ',' + str(allpoints[i][2]) + ',' + str(bounds[i]) + '\n')
                 # non_dominated.append(points[i])
         file2.close()
         # return non_dominated
+
+
+    def Filter_NonDominatedPoints(self, closeness = 0.285):
+        file_path = os.path.join(self.MOOPATH, 'NonDominatedPoints.csv')
+
+        # Read the CSV file into a list of rows
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Separate the header and the data
+        header = lines[0]  # Save the header
+        rows = lines[1:]  # Save the data
+
+        # Sort the rows by the first column (Budget)
+        rows.sort(key=lambda x: int(x.split(',')[0]))
+
+        # Overwrite the original file with the sorted data
+        with open(file_path, 'w') as file:
+            file.write(header)  # Write the header back
+            file.writelines(rows)  # Write the sorted rows
+
+        ########################################################################################################
+        ################# Filtering CODE, optimal separation found to be around : closeness = 0.285 ############
+        data = []
+        with open(file_path, 'r') as file:
+            # skip the header line
+            next(file)
+
+            for line in file:
+                # split the line by commas and strip any extra whitespace
+                values = line.strip().split(',')
+                counter = 0
+                for items in values:
+                    values[counter] = items.strip()
+                    counter += 1
+                budget = int(values[0])
+                P_load = float(values[1])
+                N_load = float(values[2])
+                bounds = values[3]
+
+                # Append the row as a tuple to the data list
+                data.append((budget, P_load, N_load, bounds))
+
+        data.sort(key=lambda x: (x[0], x[1]))
+
+        zero_budget_values = [self.singleObjResults[0], self.singleObjResults[len(self.budgetList)]]
+
+        # Convert the sorted data into a dictionary
+        result_dict = {
+            'Budget': [row[0] for row in data],
+            'PhosphorousLoad': [row[1] for row in data],
+            'NitrogenLoad': [row[2] for row in data],
+            'Bounds': [row[3] for row in data]
+        }
+
+        unique_budgets = set(result_dict['Budget'])
+
+        percent_reduction = []
+        for val in data:
+            percent_reduction.append(((zero_budget_values[0] - val[1]) * 100 / zero_budget_values[0],
+                                      (zero_budget_values[1] - val[2]) * 100 / zero_budget_values[1]))
+        #print("percent reduction is: ", percent_reduction)
+
+        # print(data[0])
+        Budgets = (list(set(result_dict['Budget'])))
+        Budgets.sort()
+        # print(Budgets)
+
+        filtered_nondominated = []
+        temp_index = 0
+        counter = 0
+        filtered_nondominated.append(data[counter])
+
+
+        for i in range(len(percent_reduction)):
+            try:
+                # if skip == True:
+                # skip = False
+                # continue
+                if Budgets[counter] != data[i + 1][0]:
+                    #print("Change in Budget")
+                    counter += 1
+                    filtered_nondominated.append(data[i + 1])
+                    temp_index += 1
+                    continue
+
+                else:
+                    #print("itr {} , list is {}, index {}".format(i, filtered_nondominated, temp_index))
+
+                    index = data.index(filtered_nondominated[temp_index])
+                    # if (abs(percent_reduction[index][0]-percent_reduction[i+1][0]) <= closeness) and (abs(percent_reduction[index][1]-percent_reduction[i+1][1]) <= closeness):
+                    # del filtered_nondominated[temp_index]
+
+                    # if temp_index == 0:
+                    # filtered_nondominated.append(data[i + 2])
+                    # skip = True
+
+                    # if temp_index > 0:
+                    # temp_index -= 1
+
+                    # print("a false non dominated point in optimization removed")
+
+                    if abs(percent_reduction[index][1] - percent_reduction[i + 1][1]) <= closeness:
+                        pass
+
+                    elif abs(percent_reduction[index][0] - percent_reduction[i + 1][0]) <= closeness:
+                        filtered_nondominated.append(data[i + 1])
+                        del filtered_nondominated[temp_index]
+
+                    else:
+                        filtered_nondominated.append(data[i + 1])
+                        temp_index += 1
+            except:
+                pass
+                #print("exception occurred at iteration {}".format(i))
+
+        file_name = 'Filtered_NonDominatedPoints.csv'
+        file_path = os.path.join(self.MOOPATH, file_name)
+        new_file = open(file_path, 'w+')
+        new_file.write('Budget, PhosphorousLoad, NitrogenLoad, Bounds\n')
+
+        for items in filtered_nondominated:
+            new_file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
 
         #non_dominated_points = find_non_dominated(allpoints, bounds)
     # %%
     def Read_Data(self, Network, BMP_Tech, TimePeriod=1):
         self.TimePeriod = TimePeriod
         if isinstance(self.TimePeriod, int) != True:
+
             print("Please Enter integer values")
             return "Null"
         elif self.TimePeriod < 1:
@@ -692,6 +882,9 @@ class EPA:
     def Set_Budget_List(self, budgetList):
         if len(budgetList) < 0:
             print("WARNING: no budgets provided.")
+        if 0 not in budgetList:
+            print("WARNING: CANNOT RUN WITHOUT 0 Budget")
+            raise ValueError("Please input 0 as a budget for calculating initial bounds")
         validBudgetList = []
         for value in budgetList:
             if isinstance(value, int) or isinstance(value, float):
@@ -699,8 +892,6 @@ class EPA:
             else:
                 raise ValueError("Invalid value type in Budget List: {}".format(value))
         self.budgetList = validBudgetList
-
-
 
     # %% Set the upper limit of measures
     def Set_Measure_Budget(self, Measure, Value):
@@ -750,7 +941,7 @@ class EPA:
         if not (Objective_Measure in self.MM):
             if self.MM == []:
                 print(
-                    "The list of measure has been imported yet. Please read the network data using 'Read_Data' first.")
+                    "The list of measure has not been imported yet. Please read the network data using 'Read_Data' first.")
                 return
             else:
                 print(
@@ -759,6 +950,10 @@ class EPA:
                 print(self.MM)
                 return
         self.ZZ = [Objective_Measure]  # Set of Objectives
+        if self.ZZ[0] == 'P':
+            self.Correction_Factor = self.Correction_Factor_P
+        else:
+            self.Correction_Factor = self.Correction_Factor_N
 
     # %% Set the limits of the bounded objectives
     def Set_BoundedMeasures(self, Measures, Bounds):
@@ -785,6 +980,110 @@ class EPA:
                 return
             self.Solver = solver
             print('Solver is properly set to {}'.format(solver))
+
+    def WAM_InputGenerator_SO(self, Objective, TimePeriod = 1):
+        self.TimePeriod = TimePeriod
+        if isinstance(self.TimePeriod, int) != True:
+            print("Please Enter integer values")
+            return "Null"
+        elif self.TimePeriod < 1:
+            print("Please Enter the value of TimePeriod starting from equal or greater than 1 in integers")
+            return "Null"
+
+        """Set the objective for Input Generator."""
+        if Objective not in ['P', 'N']:
+            raise ValueError("Invalid objective. Choose 'P' or 'N'")
+        self.Objective = Objective
+
+        """Perform actions based on the chosen objective."""
+        if self.Objective == 'P':
+            self.run_scriptTP()  # Call script or function for objective 1
+        elif self.Objective == 'N':
+            self.run_scriptTN()  # Call script or function for objective 2
+        else:
+            raise ValueError("Objective for Input Generator set.")
+
+        self.BMP_Selection()
+
+        if self.Objective == 'P':
+            """ write code to change the format of network file"""
+            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv")
+            output_file = "NetworkInfo.csv"
+            n_rows = len(data)
+            start_index = 4+self.TimePeriod
+            columns_to_add = self.TimePeriod
+
+            new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
+            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            # Insert new columns into the DataFrame at the specified position
+            columns = data.columns.tolist()
+            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # Save the updated DataFrame to a new CSV file
+            result.to_csv(output_file, index=False)
+
+        elif self.Objective == 'N':
+            """ write code to change the format of network file"""
+            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv")
+            output_file = "NetworkInfo.csv"
+            n_rows = len(data)
+            start_index = 4
+            columns_to_add = self.TimePeriod
+            new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
+            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            # Insert new columns into the DataFrame at the specified position
+            columns = data.columns.tolist()
+            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # Save the updated DataFrame to a new CSV file
+            result.to_csv(output_file, index=False)
+        else:
+            raise ValueError("The objective nutrient for input network generation not set!")
+
+        self.run_GenInputSO()
+
+        print("*****INPUT FILES GENERATED********")
+
+    #### Osama and Long's Script
+    def run_scriptTP(self):
+        subprocess.run(["python", "WAM_Network_Automation_TP.py"])
+
+    def run_scriptTN(self):
+        subprocess.run(["python", "WAM_Network_Automation_TN.py"])
+    ######
+
+    def run_GenInputSO(self):
+        subprocess.run(["python", "GenInputSO.py", str(self.TimePeriod)])
+
+
+    def BMP_Selection(self): # jiayi's Code
+        # %%
+        # Load the data from the uploaded files
+        usace_bmp_path = 'BMP_database/USACE_BMP_database.csv'
+        if self.Objective == 'P':
+            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TP.csv'
+        elif self.Objective == 'N':
+            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TN.csv'
+        else:
+            raise ValueError("File can not be created. Input to Objective for WAM_InputGenerator_SO")
+
+        usace_bmp_df = pd.read_csv(usace_bmp_path)
+        wam_luid_df = pd.read_csv(wam_luid_path)
+        # %%
+        # Filter BMPs based on the LUIDs provided in the WAM_unique_LUID_optim_TN file
+        selected_luids = wam_luid_df['LUID']
+        filtered_bmps = usace_bmp_df[usace_bmp_df['LU_CODE'].isin(selected_luids)]
+        # %%
+        # Save the filtered BMPs to a new CSV file (optional)
+        try:
+            filtered_bmps.to_csv('BMPsInfo.csv', index=False)
+        except:
+            print("BMPsInfo can not be created")
+        # Display the filtered BMPs
+        # print(filtered_bmps)
+        # %%
+
+
 
 # %%
 def IsSubset(X, Y):
