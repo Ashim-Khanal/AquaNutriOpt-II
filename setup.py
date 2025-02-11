@@ -10,7 +10,7 @@ classifiers = [
 
 setup(
     name = 'AquaNutriOpt',
-    version='2.0',
+    version='2.2',
     description='Finds the optimal placement of BMPs and Technologies in a network in order to reduce the nutrient loadings at the lake with multiple objectives taking different year nutrient loadings in consideration',
     Long_description = open('README.txt').read() + '\n\n' + open('CHANGELOG.txt').read(),
     url='https://github.com/Ashim-Khanal/AquaNutriOpt',
