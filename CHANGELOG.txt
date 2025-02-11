@@ -1,0 +1,11 @@
+Change Log
+==========
+
+0.0.2(07/20/2023)
+-----------------
+- Second Release
+Previous version was the package NutrientRedOpt which is now depricated. 
+
+2.0(04/02/2024)
+-Third Release
+Incorporates two new models viz. Time Indexed Single Objective Model and Multiobjective Time Indexed Model.
