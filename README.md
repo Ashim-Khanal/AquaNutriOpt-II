@@ -14,5 +14,8 @@ https://usfedu-my.sharepoint.com/:f:/g/personal/ashimkhanal_usf_edu/Eq9uVcLifWFA
 _​WAM:_ 
 https://usfedu-my.sharepoint.com/:f:/g/personal/ashimkhanal_usf_edu/ElD5sam4hrpPky_EjOVMwM0BB_RAsqXakHiHChRNlybKCg?e=GEECeV
 
-Update 2025/1/22
+_SWAT:_
+https://usfedu-my.sharepoint.com/:f:/g/personal/ashimkhanal_usf_edu/EibFGtSexidLtcti2HRMbqkB35x1ho4EqGaziGWy2Yh4gQ?e=u1RBXH
+
+Update 2025/2/17
 Direct Input of outputs from WAM is now supported. 
