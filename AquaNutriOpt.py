@@ -24,6 +24,7 @@ class EPA:
         self.Correction_Factor_P = 0.55
         self.Correction_Factor_N = 1.05
         self.timeLimit = 10
+        self.softwareCode = 0
     # %%
     def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
         self.timeLimit = timeLimit
@@ -982,6 +983,7 @@ class EPA:
             print('Solver is properly set to {}'.format(solver))
 
     def WAM_InputGenerator_SO(self, Objective, TimePeriod = 1):
+        self.softwareCode = 0
         self.TimePeriod = TimePeriod
         if isinstance(self.TimePeriod, int) != True:
             print("Please Enter integer values")
@@ -1007,7 +1009,7 @@ class EPA:
 
         if self.Objective == 'P':
             """ write code to change the format of network file"""
-            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv")
+            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv",dtype=object)
             output_file = "NetworkInfo.csv"
             n_rows = len(data)
             start_index = 4+self.TimePeriod
@@ -1024,7 +1026,7 @@ class EPA:
 
         elif self.Objective == 'N':
             """ write code to change the format of network file"""
-            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv")
+            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv",dtype=object)
             output_file = "NetworkInfo.csv"
             n_rows = len(data)
             start_index = 4
@@ -1045,6 +1047,7 @@ class EPA:
         print("*****INPUT FILES GENERATED********")
 
     def WAM_InputGenerator_MO(self, TimePeriod = 1):
+        self.softwareCode = 0
         self.TimePeriod = TimePeriod
         subprocess.run(["python", "WAM_Network_Automation_MO.py"])
         self.BMP_Selection_MO()
@@ -1057,15 +1060,86 @@ class EPA:
                 dest.write(line)
         self.run_GenInputMO()
 
+    def SWAT_InputGenerator_SO(self, Objective, TimePeriod = 1):
+        self.softwareCode = 1
+        self.TimePeriod = TimePeriod
+        if isinstance(self.TimePeriod, int) != True:
+            print("Please Enter integer values")
+            return "Null"
+        elif self.TimePeriod < 1:
+            print("Please Enter the value of TimePeriod equal to or greater than 1 in integers")
+            return "Null"
+
+        """Set the objective for Input Generator."""
+        if Objective not in ['P', 'N']:
+            raise ValueError("Invalid objective. Choose either 'P' or 'N'")
+        self.Objective = Objective
+
+        """Perform actions based on the chosen objective."""
+        if self.Objective == 'P':
+            self.run_scriptTP()  # Call script or function for objective 1
+        elif self.Objective == 'N':
+            self.run_scriptTN()  # Call script or function for objective 2
+        else:
+            raise ValueError("Objective for Input Generator set incorrectly.")
+
+        self.BMP_Selection()
+
+        if self.Objective == 'P':
+            """ write code to change the format of network file"""
+            data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TP.csv",dtype=object)
+            output_file = "NetworkInfo.csv"
+            n_rows = len(data)
+            start_index = 4 + self.TimePeriod
+            columns_to_add = self.TimePeriod
+
+            new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
+            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            # Insert new columns into the DataFrame at the specified position
+            columns = data.columns.tolist()
+            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # Save the updated DataFrame to a new CSV file
+            result.to_csv(output_file, index=False)
+
+        elif self.Objective == 'N':
+            """ write code to change the format of network file"""
+            data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TN.csv",dtype=object)
+            output_file = "NetworkInfo.csv"
+            n_rows = len(data)
+            start_index = 4
+            columns_to_add = self.TimePeriod
+            new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
+            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            # Insert new columns into the DataFrame at the specified position
+            columns = data.columns.tolist()
+            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # Save the updated DataFrame to a new CSV file
+            result.to_csv(output_file, index=False)
+        else:
+            raise ValueError("The objective nutrient for input network generation not set!")
+
+        self.run_GenInputSO()
+
+        print("*****SWAT INPUT FILES GENERATED********")
+
     def run_GenInputMO(self):
         subprocess.run(["python", "GenInputMO.py", str(self.TimePeriod)])
 
     #### Osama and Long's Script
     def run_scriptTP(self):
-        subprocess.run(["python", "WAM_Network_Automation_TP.py"])
+        if self.softwareCode == 0:
+            subprocess.run(["python", "WAM_Network_Automation_TP.py"])
+        elif self.softwareCode == 1:
+            subprocess.run(["python", "SWAT_Network_Automation_TP.py"])
+
 
     def run_scriptTN(self):
-        subprocess.run(["python", "WAM_Network_Automation_TN.py"])
+        if self.softwareCode == 0:
+            subprocess.run(["python", "WAM_Network_Automation_TN.py"])
+        elif self.softwareCode == 1:
+            subprocess.run(["python", "SWAT_Network_Automation_TN.py"])
     ######
     def run_GenInputSO(self):
         subprocess.run(["python", "GenInputSO.py", str(self.TimePeriod)])
@@ -1076,18 +1150,28 @@ class EPA:
         # %%
         # Load the data from the uploaded files
         usace_bmp_path = 'BMP_database/USACE_BMP_database.csv'
-        if self.Objective == 'P':
-            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TP.csv'
-        elif self.Objective == 'N':
-            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TN.csv'
-        else:
-            raise ValueError("File can not be created. Input to Objective for WAM_InputGenerator_SO")
-
         usace_bmp_df = pd.read_csv(usace_bmp_path)
-        wam_luid_df = pd.read_csv(wam_luid_path)
+        if self.softwareCode == 0:
+            if self.Objective == 'P':
+                wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TP.csv'
+            elif self.Objective == 'N':
+                wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_optim_TN.csv'
+            else:
+                raise ValueError("File can not be created. Input to Objective for WAM_InputGenerator_SO")
+            wam_luid_df = pd.read_csv(wam_luid_path)
+            selected_luids = wam_luid_df['LUID']
+        elif self.softwareCode == 1:
+            if self.Objective == 'P':
+                swat_luid_path = 'SWAT/Outputs/SWAT_unique_LUID_optim_TP.csv'     ### SWAT LUIDS are automatically converted to WAM LUIDs using LU names
+            elif self.Objective == 'N':
+                swat_luid_path = 'SWAT/Outputs/SWAT_unique_LUID_optim_TN.csv'
+            else:
+                raise ValueError("File can not be created. Input to Objective for SWAT_InputGenerator_SO")
+            swat_luid_df = pd.read_csv(swat_luid_path)
+            selected_luids = swat_luid_df['LUID']
+
         # %%
         # Filter BMPs based on the LUIDs provided in the WAM_unique_LUID_optim_TN file
-        selected_luids = wam_luid_df['LUID']
         filtered_bmps = usace_bmp_df[usace_bmp_df['LU_CODE'].isin(selected_luids)]
         # %%
         # Save the filtered BMPs to a new CSV file (optional)
@@ -1102,15 +1186,20 @@ class EPA:
         # %%
         try:
             usace_bmp_path = 'BMP_database/USACE_BMP_database.csv'
+            usace_bmp_df = pd.read_csv(usace_bmp_path)
             wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
-        except:
-            raise ValueError("File can not be created. Input to Objective for WAM_InputGenerator_SO")
+            wam_luid_df = pd.read_csv(wam_luid_path)
+            selected_luids = wam_luid_df['LUID']
 
-        usace_bmp_df = pd.read_csv(usace_bmp_path)
-        wam_luid_df = pd.read_csv(wam_luid_path)
+            swat_luid_path = 'SWAT/Outputs/SWAT_unique_LUID_multiple_obj_optim.csv'
+            swat_luid_df = pd.read_csv(swat_luid_path)
+            selected_luids = swat_luid_df['LUID']
+        except:
+            raise ValueError("File can not be created. Error while creating input to Objective for WAM_InputGenerator_SO")
+
         # %%
         # Filter BMPs based on the LUIDs provided in the WAM_unique_LUID_optim_TN file
-        selected_luids = wam_luid_df['LUID']
+
         filtered_bmps = usace_bmp_df[usace_bmp_df['LU_CODE'].isin(selected_luids)]
         # %%
         # Save the filtered BMPs to a new CSV file (optional)
