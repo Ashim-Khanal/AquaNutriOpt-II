@@ -115,7 +115,7 @@ class EPA:
         print('**************************************************************')
 
 
-        self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit)
+        self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit, msg=False)
         #solver = pulp.get_solver(self.Solver)
         Sol = MODEL.solve(self.solver)
 
@@ -253,8 +253,8 @@ class EPA:
         print('Solving the model ... ****************************************')
         print('**************************************************************')
         print('**************************************************************')
-
-        self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit = self.timeLimit)
+        self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit, msg=False)
+        #self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit = self.timeLimit)
         #solver = pulp.get_solver(self.solver)
         Sol = MODEL.solve(self.solver)
         self.TargetLoad = MODEL.objective.value()
@@ -316,7 +316,7 @@ class EPA:
 
 
         # Setting the target node
-        self.Set_TargetLocation('1')
+        #self.Set_TargetLocation('1')
 
         current_dir = os.getcwd()
         new_dir = 'MOOResults'
@@ -436,8 +436,8 @@ class EPA:
         print('Solving the model ... ****************************************')
         print('**************************************************************')
         print('**************************************************************')
-
-        self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit=self.timeLimit)
+        self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit, msg=False)
+        #self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit=self.timeLimit)
 
         """ Run the multi-objective optimization automation loop """
         file_name = 'allPointsWithBounds.csv'
@@ -612,17 +612,20 @@ class EPA:
         file_path = os.path.join(self.MOOPATH, file_name)
         file2 = open(file_path, 'w+')
         file2.write('Budget, PhosphorousLoad, NitrogenLoad, Bounds\n')
-
+        non_dominated_points = {}
         # non_dominated = []
         for i in range(len(allpoints)):
             dominated = False
             for j in range(len(allpoints)):
-                if i != j and all(allpoints[j][k] <= allpoints[i][k] for k in range(len(allpoints[i]))):
+                if i != j and all(allpoints[j][k] <= allpoints[i][k] for k in range(len(allpoints[i])))\
+                        and any(allpoints[j][k] < allpoints[i][k] for k in range(len(allpoints[i]))):
                     dominated = True
                     break
             if not dominated:
-                file2.write(str(allpoints[i][0]) + ',' + str(allpoints[i][1]) + ',' + str(allpoints[i][2]) + ',' + str(bounds[i]) + '\n')
-                # non_dominated.append(points[i])
+                non_dominated_points[tuple(allpoints[i])] = bounds[i]
+        #for i in range(len(non_dominated_points)):
+        for point, bound in non_dominated_points.items():
+            file2.write(','.join(map(str, point)) + ',' + str(bound) + '\n')
         file2.close()
         # return non_dominated
 
@@ -667,6 +670,7 @@ class EPA:
 
                 # Append the row as a tuple to the data list
                 data.append((budget, P_load, N_load, bounds))
+                #print("*** the requiredData  is ***", data)
 
         data.sort(key=lambda x: (x[0], x[1]))
 
@@ -1060,6 +1064,20 @@ class EPA:
                 dest.write(line)
         self.run_GenInputMO()
 
+    def SWAT_InputGenerator_MO(self, TimePeriod = 1):
+        self.softwareCode = 1
+        self.TimePeriod = TimePeriod
+        subprocess.run(["python", "SWAT_Network_Automation_MO.py"])
+        self.BMP_Selection_MO()
+        data = "SWAT/Outputs/SWAT_final_output_multiple_obj_optim.csv"
+        output_file = "NetworkInfo.csv"
+        # Open the source file in read mode and the destination file in write mode
+        with open(data, 'r') as src, open(output_file, 'w') as dest:
+            # Read from the source and write to the destination
+            for line in src:
+                dest.write(line)
+        self.run_GenInputMO()
+
     def SWAT_InputGenerator_SO(self, Objective, TimePeriod = 1):
         self.softwareCode = 1
         self.TimePeriod = TimePeriod
@@ -1187,15 +1205,17 @@ class EPA:
         try:
             usace_bmp_path = 'BMP_database/USACE_BMP_database.csv'
             usace_bmp_df = pd.read_csv(usace_bmp_path)
-            wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
-            wam_luid_df = pd.read_csv(wam_luid_path)
-            selected_luids = wam_luid_df['LUID']
-
-            swat_luid_path = 'SWAT/Outputs/SWAT_unique_LUID_multiple_obj_optim.csv'
-            swat_luid_df = pd.read_csv(swat_luid_path)
-            selected_luids = swat_luid_df['LUID']
+            if self.softwareCode == 0:
+                wam_luid_path = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
+                luid_df = pd.read_csv(wam_luid_path)
+            elif self.softwareCode == 1:
+                swat_luid_path = 'SWAT/Outputs/SWAT_unique_LUID_multiple_obj_optim.csv'
+                luid_df = pd.read_csv(swat_luid_path)
+            else:
+                print(" We can only work with either Custom Optimization Inputs or WAM and SWAT outputs as the Inputs")
+            selected_luids = luid_df['LUID']
         except:
-            raise ValueError("File can not be created. Error while creating input to Objective for WAM_InputGenerator_SO")
+            raise ValueError("File can not be created. Error while creating input to Objective for WAM or SWAT InputGenerator_SO")
 
         # %%
         # Filter BMPs based on the LUIDs provided in the WAM_unique_LUID_optim_TN file
