@@ -97,7 +97,7 @@ def SplittingNodeCreation(TimePeriod):
     # For example, the script above deletes the 2nd last, 3rd last, and 4th last columns for multiobjective optimization case
 
     # Read the CSV file into a DataFrame without header
-    df = pd.read_csv(file_path, header=None)
+    df = pd.read_csv(file_path, header=None, dtype=object)
 
     # Drop the specified columns using the column indices
     df.drop(df.columns[columns_to_delete], axis=1, inplace=True)
@@ -359,6 +359,3 @@ def Prep_Net(TimePeriod):
         print("No such file in the directory")
 
 Prep_Net(TimePeriod)
-
-
-
