@@ -6,7 +6,7 @@ import datetime as dt
 import numpy as np
 import csv
 import sys
-from SWAT_utils import *
+from AquaNutriOpt.SWAT_utils import *
 
 ########### Notes ################
 # 1. Need to check LUID column of the final output for any blank value. If yes, need to update the input file. (LUID.xlsx.)
@@ -38,16 +38,12 @@ if not os.path.exists(Inputs_path):
     os.makedirs(Inputs_path)
 
 
-
-
-
 # data for computing TP, TN
 input_TP_filename = 'SWAT_rch.xlsx'
 # input_TN_filename = 'rch.xlsx'
 input_reach_in_out_file = 'SWAT_Reach.xlsx'
 input_annual_subbasin_filename = 'SWAT_hru.xlsx'
 input_luid_filename = 'LUIDs.xlsx'
-
 subbasin_TP_input_file = os.path.join(Inputs_path, input_TP_filename)
 input_luid_file = os.path.join(Inputs_path, input_luid_filename)
 # subbasin_TN_input_file = os.path.join(Inputs_path, input_TN_filename)
@@ -179,6 +175,15 @@ cols_to_summarize_TP = ['ORGP_OUTkg', 'MINP_OUTkg']
 Watershed_annual_TP_df = Watershed_annual_df.groupby(cols_to_group_by)[cols_to_summarize_TP].sum()
 Watershed_annual_TP_df['TPtons'] = ( Watershed_annual_TP_df['ORGP_OUTkg'] + Watershed_annual_TP_df['MINP_OUTkg'] )/1000
 
+
+# TN
+# cols_to_summarize_TN = ['ORGN_OUTkg', 'NO3_OUTkg', 'NH4_OUTkg', 'NO2_OUTkg']
+# Watershed_annual_TN_df = Watershed_annual_df.groupby(cols_to_group_by)[cols_to_summarize_TN].sum()
+# Watershed_annual_TN_df['TNtons'] = ( Watershed_annual_TN_df['ORGN_OUTkg'] 
+#                                     + Watershed_annual_TN_df['NO3_OUTkg'] 
+#                                    + Watershed_annual_TN_df['NH4_OUTkg'] 
+#                                    + Watershed_annual_TN_df['NO2_OUTkg'] )/1000
+
 Watershed_annual_TP_df = Watershed_annual_TP_df.reset_index()
 
 df_tp_unstacked = Watershed_annual_TP_df.pivot(index='REACH', 
@@ -206,40 +211,6 @@ for i in range(len(Final_Output_df)):
             
 Watershed_w_Split_annual_TP_df = Watershed_w_Split_annual_TP_df.T
 
-# TN
-cols_to_summarize_TN = ['ORGN_OUTkg', 'NO3_OUTkg', 'NH4_OUTkg', 'NO2_OUTkg']
-Watershed_annual_TN_df = Watershed_annual_df.groupby(cols_to_group_by)[cols_to_summarize_TN].sum()
-Watershed_annual_TN_df['TNtons'] = ( Watershed_annual_TN_df['ORGN_OUTkg'] 
-                                    + Watershed_annual_TN_df['NO3_OUTkg'] 
-                                   + Watershed_annual_TN_df['NH4_OUTkg'] 
-                                   + Watershed_annual_TN_df['NO2_OUTkg'] )/1000
-
-Watershed_annual_TN_df = Watershed_annual_TN_df.reset_index()
-
-df_tn_unstacked = Watershed_annual_TN_df.pivot(index='REACH', 
-                                               columns='YEAR', 
-                                               values='TNtons')
-
-# create Watershed_w_Split_annual_TN_df by using the outgoing reach
-Watershed_w_Split_annual_TN_df = pd.DataFrame()
-n_yrs = len(df_tn_unstacked.columns)
-Years = np.zeros(n_yrs)
-for i in range(n_yrs):
-    Years[i] = df_tn_unstacked.columns[i]#avoid the for loop.
-Years = Years.astype(int)
-Fst_Yr = Years[0]
-Lst_Yr = Years[-1]
-for i in range(len(Final_Output_df)):
-    TN_Load_tons = np.zeros(len(Years))
-    # print('%s_%s' % (Final_Output_df_copy['REACH'].iloc[i], Final_Output_df_copy['Outgoing'].iloc[i]))
-    for j in range(len(df_tn_unstacked)):
-        if Final_Output_df['REACH'].iloc[i] == str(df_tn_unstacked.index[j]):
-            # print('Reach =', Final_Output_df['REACH'].iloc[i], 'Outgoing = ' , Final_Output_df['Outgoing'].iloc[i])
-            for y in Years:
-                TN_Load_tons[y - Fst_Yr] = df_tn_unstacked[y].iloc[i]
-            Watershed_w_Split_annual_TN_df['%s_%s' % (Final_Output_df['REACH'].iloc[i], Final_Output_df['Outgoing'].iloc[i])] = TN_Load_tons 
-            
-Watershed_w_Split_annual_TN_df = Watershed_w_Split_annual_TN_df.T
 
 # #################### 5. Compute TP, TN of the most dominant land usage.
 # input_annual_subbasin_filename = 'hru_small_sub01.xlsx'
@@ -260,14 +231,14 @@ COLUMNS_TO_KEEP_TP = ['REACH', 'LUID', 'Area_acres', 'percent_TP_tons_by_REACH']
 COLUMNS_TO_KEEP_TN = ['REACH', 'LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
 COLUMNS_TO_KEEP_TP_TN = ['REACH', 'LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH', 'sum_percent_TP_TN']
 
-# out5_TP_file = 'Watershed_single_obj_opti_TP.csv'
-# out5_TP = os.path.join(Outputs_path, out5_TP_file)
+out5_TP_file = 'Watershed_single_obj_opti_TP.csv'
+out5_TP = os.path.join(Outputs_path, out5_TP_file)
 
 # out5_TN_file = 'Watershed_single_obj_opti_TN.csv'
 # out5_TN = os.path.join(Outputs_path, out5_TN_file)
 
-out5_TP_TN_file = 'Watershed_multiple_obj_opti.csv'
-out5_TP_TN = os.path.join(Outputs_path, out5_TP_TN_file)
+# out5_TP_TN_file = 'Watershed_multiple_obj_opti.csv'
+# out5_TP_TN = os.path.join(Outputs_path, out5_TP_TN_file)
 
 
 #calculate the Area_ac
@@ -323,13 +294,13 @@ pivotT['percent_TN_tons_by_REACH'] = pivotT['percent_TN_tons_by_REACH'].replace(
 # # single objective optimization
 
 # # TP
-# pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH']
-# hru_df_single_obj_opti_TP = process_single_multi_obj_data(pivotT, 
-#                               'TP',
-#                               'single_obj', 
-#                               COLUMNS_TO_DROP, 
-#                               COLUMNS_TO_KEEP_TP, 
-#                               out5_TP)
+pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH']
+hru_df_single_obj_opti_TP = process_single_multi_obj_data(pivotT, 
+                              'TP',
+                              'single_obj', 
+                              COLUMNS_TO_DROP, 
+                              COLUMNS_TO_KEEP_TP, 
+                              out5_TP)
 
 
 # TN
@@ -341,18 +312,17 @@ pivotT['percent_TN_tons_by_REACH'] = pivotT['percent_TN_tons_by_REACH'].replace(
 #                               COLUMNS_TO_KEEP_TN, 
 #                               out5_TN)
 # # TP_TN
-pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
-hru_df_multiple_obj_opti_TP_TN = process_single_multi_obj_data(pivotT, 
-                              'TP_TN',
-                              'multi_obj',
-                              COLUMNS_TO_DROP_TP_TN, 
-                              COLUMNS_TO_KEEP_TP_TN, 
-                              out5_TP_TN)
+# pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
+# hru_df_multiple_obj_opti_TP_TN = process_single_multi_obj_data(pivotT, 
+#                               'TP_TN',
+#                               'multi_obj',
+#                               COLUMNS_TO_DROP_TP_TN, 
+#                               COLUMNS_TO_KEEP_TP_TN, 
+#                               out5_TP_TN)
 
 # # # 6. Collect data for the final outputs
 IP_Reaches_In_Out =  Final_Output_df
 IP_TP_Splitting = Watershed_w_Split_annual_TP_df
-IP_TN_Splitting = Watershed_w_Split_annual_TN_df
 
 #Create TP_df
 TP_df = pd.DataFrame()
@@ -370,47 +340,24 @@ for i in range(len(IP_Reaches_In_Out)):
             
     TP_df['%s' % (IP_Reaches_In_Out['REACH'].iloc[i])] = TP_Out - TP_In
 
-#Create TN_df
-TN_df = pd.DataFrame()
-for i in range(len(IP_Reaches_In_Out)):
-    TN_Out = np.zeros(len(Years))
-    TN_In = np.zeros(len(Years))
-    for reach_reach, cols in IP_TN_Splitting.iterrows():
-        if IP_Reaches_In_Out['REACH'].iloc[i] == reach_reach.split("_")[0]:
-            for y in Years:
-                TN_Out[y - Fst_Yr] = TN_Out[y - Fst_Yr] + cols[y- Fst_Yr]
-        
-        if IP_Reaches_In_Out['REACH'].iloc[i] == reach_reach.split("_")[1]:
-            for y in Years:
-                TN_In[y - Fst_Yr] = TN_In[y - Fst_Yr] + cols[y- Fst_Yr]
-            
-    TN_df['%s' % (IP_Reaches_In_Out['REACH'].iloc[i])] = TN_Out - TN_In
-
 Final_Network_TP_df = process_new_tp_tn_df(TP_df, 
-                                        IP_Reaches_In_Out, 
-                                        Fst_Yr, 
-                                        Lst_Yr)
-
-Final_Network_TN_df = process_new_tp_tn_df(TN_df, 
                                         IP_Reaches_In_Out, 
                                         Fst_Yr, 
                                         Lst_Yr)
 
 ################ Compute splitting ratio ###################
 Splitting_TP_df = create_splitting_tp_tn_df(IP_Reaches_In_Out)
-Splitting_TN_df = create_splitting_tp_tn_df(IP_Reaches_In_Out)
-
 #Update Splitting_TP_df
 for i in range(len(IP_Reaches_In_Out)): # for each round in IP_Reaches_In_Out
     # if the current row's 'Outgoing' is a string variable then
     if type(IP_Reaches_In_Out['Outgoing'].iloc[i]) == str:
         # if there is more than 1 outgoing, then
         if len(IP_Reaches_In_Out['Outgoing'].iloc[i].split(",")) > 1:
-            Splt_TN = [] # this variable is going to be changed.
+            #Splt_TP = [] # this variable is going to be changed.
             Splt_TP = [] # this variable is going to be changed.
             for j in IP_Reaches_In_Out['Outgoing'].iloc[i].split(","): # for each outgoing point then
                 try:
-                    Splt_TN.append(IP_TP_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
+                    #Splt_TP.append(IP_TP_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
                     Splt_TP.append(IP_TP_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
                 except KeyError as e:
                     print(f"Error: Could not locate the row with key '{e.args[0]}' in IP_TP_Splitting.")
@@ -422,69 +369,39 @@ for i in range(len(IP_Reaches_In_Out)): # for each round in IP_Reaches_In_Out
                 if k < 0:
                     New_Splt_TP.append(0)
                 else:
-                    New_Splt_TP.append(k)
-            
-            New_Splt_TN = []
-            for k in Splt_TN:
-                if k < 0:
-                    New_Splt_TN.append(0)
-                else:
-                    New_Splt_TN.append(k)
-            Splitting_TN_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TN)).astype(str) for k in New_Splt_TN)
+                    New_Splt_TP.append(k) 
+            #Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TP)).astype(str) for k in New_Splt_TP)
             Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TP)).astype(str) for k in New_Splt_TP)
         else:
             #In Ratio column, If no multiple outgoings, then it was empty.
             Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ''
-            Splitting_TN_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ''
-
 Final_Network_TP_df = pd.merge(Final_Network_TP_df,
                             Splitting_TP_df, 
                             how = 'inner',
                             on = 'REACH')
 
-Final_Network_TN_df = pd.merge(Final_Network_TN_df,
-                            Splitting_TN_df, 
-                            how = 'inner', 
-                            on ='REACH')
-
 ##############################################################################
 Years = [int(i) for i in Years]
 # print(type(Years))
-final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH']
-merged_df_multi_obj_optim = merge_ratio_TP_TN_percentage_data(Final_Network_TP_df, 
-                                                                  hru_df_multiple_obj_opti_TP_TN,
-                                                                  final_columns_format_TP_TN)
-
-COLUMNS_TO_DROP_TN = ['Ingoing', 'Outgoing', 'Ratio'] 
-Final_Network_TN_df.drop(columns=COLUMNS_TO_DROP_TN, inplace=True)
-
-Years_x = [str(i) + '_x' for i in Years]
-Years_y = [str(i) + '_y' for i in Years]
-final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years_x + Years_y +  ['LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH']
-merged_df_multi_obj_optim = merge_ratio_TP_TN_percentage_data(merged_df_multi_obj_optim,
-                                                              Final_Network_TN_df,
-                                                              final_columns_format_TP_TN)
+final_columns_format_TP = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TP_tons_by_REACH']
+merged_df_single_obj_optim_TP = merge_ratio_TP_TN_percentage_data(Final_Network_TP_df, 
+                                                                  hru_df_single_obj_opti_TP,
+                                                                  final_columns_format_TP)
 
 ###################################################################################
 
-########################################################################################## 7. Save the final output files
-if type(merged_df_multi_obj_optim['Area_acres']) != int:
-    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].astype(int)
+if type(merged_df_single_obj_optim_TP['Area_acres']) != int:
+    merged_df_single_obj_optim_TP['Area_acres'] = merged_df_single_obj_optim_TP['Area_acres'].astype(int)
 
-# rename 'percent_TP_tons_by_REACH' to 'TP_percent'
-merged_df_multi_obj_optim.rename(columns={'percent_TP_tons_by_REACH': 'TP_percent'}, inplace=True)
-
-# rename 'percent_TN_tons_by_REACH' to 'TN_percent'
-merged_df_multi_obj_optim.rename(columns={'percent_TN_tons_by_REACH': 'TN_percent'}, inplace=True)
-
-#################################################################
 luid_df = load_data(input_luid_file)
+
+#rename 
 
 # update the LUID column in merged_df_single_obj_optim_TP based on luid_df
 # left join merged_df_single_obj_optim_TP['LUID'] with luid_df['swat_code'] 
 # keep all columns in merged_df_single_obj_optim_TP
 
-merged_df_multi_obj_optim = pd.merge(merged_df_multi_obj_optim,
+merged_df_single_obj_optim_TP = pd.merge(merged_df_single_obj_optim_TP,
                                            luid_df,
                                            how='left',
                                            left_on='LUID',
@@ -494,44 +411,44 @@ merged_df_multi_obj_optim = pd.merge(merged_df_multi_obj_optim,
 # if LUID is 'CORN', then landuse_id is '99990'.
 # elif LUID is 'OATS', then landuse_id is '99991'.
 # otherwise, do nothing
-# reset the index of merged_df_single_obj_optim_TP to integer based.
 
-# merged_df_multi_obj_optim.reset_index(drop=True, inplace=True)
-# for i in range(len(merged_df_multi_obj_optim)):
-#     if merged_df_multi_obj_optim['LUID'].iloc[i] == 'CORN':
-#         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 99990
-#     elif merged_df_multi_obj_optim['LUID'].iloc[i] == 'OATS':
-#         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 99991
+# for i in range(len(merged_df_single_obj_optim_TP)):
+#     if merged_df_single_obj_optim_TP['LUID'].iloc[i] == 'CORN':
+#         merged_df_single_obj_optim_TP['landuse_id'].iloc[i] = 99990
+#     elif merged_df_single_obj_optim_TP['LUID'].iloc[i] == 'OATS':
+#         merged_df_single_obj_optim_TP['landuse_id'].iloc[i] = 99991
 #     #elif the landuse_id is blank or null, then set it to 9999
-#     elif pd.isnull(merged_df_multi_obj_optim['landuse_id'].iloc[i]):
-#         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 9999
+#     elif pd.isnull(merged_df_single_obj_optim_TP['landuse_id'].iloc[i]):
+#         merged_df_single_obj_optim_TP['landuse_id'].iloc[i] = 9999
 #     else:
 #         pass
 
 
-final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years_x + Years_y +  ['WAM_LUID', 'Area_acres', 'TP_percent', 'TN_percent']
-merged_df_multi_obj_optim = merged_df_multi_obj_optim[final_columns_format_TP_TN]
+
+final_columns_format_TP = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['WAM_LUID', 'Area_acres', 'percent_TP_tons_by_REACH']
+merged_df_single_obj_optim_TP = merged_df_single_obj_optim_TP[final_columns_format_TP]
 
 #rename the 'landuse_id' column to 'LUID'
-merged_df_multi_obj_optim.rename(columns={'WAM_LUID': 'LUID'}, inplace=True)
-if merged_df_multi_obj_optim['LUID'].dtype != int:
-    merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].astype(int)
+merged_df_single_obj_optim_TP.rename(columns={'WAM_LUID': 'LUID'}, inplace=True)
+
+#if type of LUID is not integer, LUID is integer
+if merged_df_single_obj_optim_TP['LUID'].dtype != int:
+    merged_df_single_obj_optim_TP['LUID'] = merged_df_single_obj_optim_TP['LUID'].astype(int)
 
 
-######################################################
-final_out_file_TP = 'SWAT_final_output_multiple_obj_optim.csv'
+final_out_file_TP = 'SWAT_final_output_single_obj_optim_TP.csv'
 final_out_file_TP = os.path.join(Outputs_path, final_out_file_TP)
-merged_df_multi_obj_optim.to_csv(final_out_file_TP, index=False, header=True)
+merged_df_single_obj_optim_TP.to_csv(final_out_file_TP, index=False, header=True)
 
 ###################################################################################
-unique_LUID_TP = merged_df_multi_obj_optim['LUID'].unique()
+unique_LUID_TP = merged_df_single_obj_optim_TP['LUID'].unique()
 unique_LUID_TP = np.array(unique_LUID_TP, dtype=int)
 # create a new dataframe given by unique_LUID_TN and data type is integer
 unique_LUID_TP = pd.DataFrame(unique_LUID_TP, columns=['LUID']) 
 
 
 # save the numpy array to a CSV file
-final_out_file_TP = 'SWAT_unique_LUID_multiple_obj_optim.csv'
+final_out_file_TP = 'SWAT_unique_LUID_optim_TP.csv'
 final_out_file_TP = os.path.join(Outputs_path, final_out_file_TP)
 unique_LUID_TP.to_csv(final_out_file_TP, index=False, header=True)
 

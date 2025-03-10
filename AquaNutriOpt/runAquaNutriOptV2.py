@@ -1,4 +1,4 @@
-from AquaNutriOpt import *
+from AquaNutriOpt.SWAT_utils import *
 
 #Example= EPA()
 
