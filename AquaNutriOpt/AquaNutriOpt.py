@@ -1053,7 +1053,7 @@ class EPA:
     def WAM_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 0
         self.TimePeriod = TimePeriod
-        subprocess.run(["python", "WAM_Network_Automation_MO.py"])
+        subprocess.run([sys.executable, "WAM_Network_Automation_MO.py"])
         self.BMP_Selection_MO()
         data = "WAM/Outputs/WAM_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1067,7 +1067,7 @@ class EPA:
     def SWAT_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 1
         self.TimePeriod = TimePeriod
-        subprocess.run(["python", "SWAT_Network_Automation_MO.py"])
+        subprocess.run([sys.executable, "SWAT_Network_Automation_MO.py"])
         self.BMP_Selection_MO()
         data = "SWAT/Outputs/SWAT_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1143,24 +1143,24 @@ class EPA:
         print("*****SWAT INPUT FILES GENERATED********")
 
     def run_GenInputMO(self):
-        subprocess.run(["python", "GenInputMO.py", str(self.TimePeriod)])
+        subprocess.run([sys.executable, "GenInputMO.py", str(self.TimePeriod)])
 
     #### Osama and Long's Script
     def run_scriptTP(self):
         if self.softwareCode == 0:
-            subprocess.run(["python", "WAM_Network_Automation_TP.py"])
+            subprocess.run([sys.executable, "WAM_Network_Automation_TP.py"])
         elif self.softwareCode == 1:
-            subprocess.run(["python", "SWAT_Network_Automation_TP.py"])
+            subprocess.run([sys.executable, "SWAT_Network_Automation_TP.py"])
 
 
     def run_scriptTN(self):
         if self.softwareCode == 0:
-            subprocess.run(["python", "WAM_Network_Automation_TN.py"])
+            subprocess.run([sys.executable, "WAM_Network_Automation_TN.py"])
         elif self.softwareCode == 1:
-            subprocess.run(["python", "SWAT_Network_Automation_TN.py"])
+            subprocess.run([sys.executable, "SWAT_Network_Automation_TN.py"])
     ######
     def run_GenInputSO(self):
-        subprocess.run(["python", "GenInputSO.py", str(self.TimePeriod)])
+        subprocess.run([sys.executable, "GenInputSO.py", str(self.TimePeriod)])
 
 
 
