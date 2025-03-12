@@ -4,9 +4,16 @@ import os
 import sys
 import time
 import math
-import subprocess
 #from utils import *
 import pandas as pd
+from AquaNutriOpt.GenInputMO import gen_input_mo
+from AquaNutriOpt.GenInputSO import gen_input_so
+from AquaNutriOpt.SWAT_Network_Automation_MO import swat_network_automation_mo
+from AquaNutriOpt.SWAT_Network_Automation_TN import swat_network_automation_tn
+from AquaNutriOpt.SWAT_Network_Automation_TP import swat_network_automation_tp
+from AquaNutriOpt.WAM_Network_Automation_MO import wam_network_automation_mo
+from AquaNutriOpt.WAM_Network_Automation_TN import wam_network_automation_tn
+from AquaNutriOpt.WAM_Network_Automation_TP import wam_network_automation_tp
 
 
 BigM = 9999
@@ -1053,7 +1060,7 @@ class EPA:
     def WAM_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 0
         self.TimePeriod = TimePeriod
-        subprocess.run([sys.executable, "WAM_Network_Automation_MO.py"])
+        wam_network_automation_mo(os.getcwd())
         self.BMP_Selection_MO()
         data = "WAM/Outputs/WAM_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1067,7 +1074,7 @@ class EPA:
     def SWAT_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 1
         self.TimePeriod = TimePeriod
-        subprocess.run([sys.executable, "SWAT_Network_Automation_MO.py"])
+        swat_network_automation_mo(os.getcwd())
         self.BMP_Selection_MO()
         data = "SWAT/Outputs/SWAT_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1143,24 +1150,25 @@ class EPA:
         print("*****SWAT INPUT FILES GENERATED********")
 
     def run_GenInputMO(self):
-        subprocess.run([sys.executable, "GenInputMO.py", str(self.TimePeriod)])
+        gen_input_mo(self.TimePeriod)
 
     #### Osama and Long's Script
     def run_scriptTP(self):
         if self.softwareCode == 0:
-            subprocess.run([sys.executable, "WAM_Network_Automation_TP.py"])
+            wam_network_automation_tp(os.getcwd())
         elif self.softwareCode == 1:
-            subprocess.run([sys.executable, "SWAT_Network_Automation_TP.py"])
+            swat_network_automation_tp(os.getcwd())
+            
 
 
     def run_scriptTN(self):
         if self.softwareCode == 0:
-            subprocess.run([sys.executable, "WAM_Network_Automation_TN.py"])
+            wam_network_automation_tn(os.getcwd())
         elif self.softwareCode == 1:
-            subprocess.run([sys.executable, "SWAT_Network_Automation_TN.py"])
+            swat_network_automation_tn(os.getcwd())
     ######
     def run_GenInputSO(self):
-        subprocess.run([sys.executable, "GenInputSO.py", str(self.TimePeriod)])
+        gen_input_so(self.TimePeriod)
 
 
 
