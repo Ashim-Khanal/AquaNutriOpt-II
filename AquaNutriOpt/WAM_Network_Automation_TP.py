@@ -14,18 +14,15 @@ import sys
 from utils import *
 
 # Example usage
-def WAM_Network_Automation_TP(time_periods):
+def WAM_Network_Automation_TP(working_path: str, time_periods: str):
     """
     Main function to process WAM data based on the given time periods.
 
     Args:
+        working_path (str): The path to the working directory where WAM inputs and outputs are stored.
         time_periods (str): Time periods to process (e.g., "2018", "2018, 2020").
     """
-    #assign Working_path to the current working directory by using os.getcwd()
-    Working_path = os.getcwd()
-    os.chdir(Working_path)
-
-    Wam_path = os.path.join(Working_path, 'WAM')
+    Wam_path = os.path.join(working_path, 'WAM')
     Inputs_path = os.path.join(Wam_path, 'Inputs')
     Outputs_path = os.path.join(Wam_path, 'Outputs')
 
@@ -48,25 +45,25 @@ def WAM_Network_Automation_TP(time_periods):
     data_dir = './WAM/Inputs/Reaches' #Directory where all the WAM's outputs, reach *.csv files, are stored
     input_TP_filename = './WAM/Inputs/Watershed_Subbasin_LU_TP.xlsx'
     input_TN_filename = './WAM/Inputs/Watershed_Subbasin_LU_TN.xlsx'
-    subbasin_TP_input_file = os.path.join(Working_path, input_TP_filename)
-    subbasin_TN_input_file = os.path.join(Working_path, input_TN_filename)
+    subbasin_TP_input_file = os.path.join(working_path, input_TP_filename)
+    subbasin_TN_input_file = os.path.join(working_path, input_TN_filename)
 
     #check if the data_dir and data_dir_2 exist in the Working_path. Otherwise, print an error message and exit from the program.
-    if not os.path.exists(os.path.join(Working_path, data_dir)):
+    if not os.path.exists(os.path.join(working_path, data_dir)):
         print(f"Error: Directory '{data_dir}' does not exist in the current working directory!")
         sys.exit("Exiting program.")
 
-    input_data_files = os.path.join(Working_path, data_dir)
+    input_data_files = os.path.join(working_path, data_dir)
 
     # create a sub-folder under the Working_path
-    if not os.path.exists(os.path.join(Working_path, 'WAM')):
-        os.makedirs(os.path.join(Working_path, 'WAM'))
+    if not os.path.exists(os.path.join(working_path, 'WAM')):
+        os.makedirs(os.path.join(working_path, 'WAM'))
 
     out1_file = './WAM/Outputs/Watershed_Annual_Flow.csv'
-    out1 = os.path.join(Working_path, out1_file)
+    out1 = os.path.join(working_path, out1_file)
 
     out2_file = './WAM/Outputs/Watershed_Reaches_In_Out.csv'
-    out2 = os.path.join(Working_path, out2_file)
+    out2 = os.path.join(working_path, out2_file)
 
     #Collect all reaches data
     All_reaches = [f for f in listdir(input_data_files) if isfile(join(input_data_files, f))]
@@ -220,13 +217,13 @@ def WAM_Network_Automation_TP(time_periods):
     ##################Compute TP, TN Loads ######################################################################
 
     out3_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_new.csv'
-    out3_TP = os.path.join(Working_path, out3_TP_file)
+    out3_TP = os.path.join(working_path, out3_TP_file)
 
     # out3_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_new.csv'
     # out3_TN = os.path.join(Working_path, out3_TN_file)
 
     out4_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_w_Split_new.csv'
-    out4_TP = os.path.join(Working_path, out4_TP_file)
+    out4_TP = os.path.join(working_path, out4_TP_file)
 
     # out4_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_w_Split_new.csv'
     # out4_TN = os.path.join(Working_path, out4_TN_file)
@@ -299,7 +296,7 @@ def WAM_Network_Automation_TP(time_periods):
     # COLUMNS_TO_KEEP_TP_TN = ['REACH', 'LUID', 'Area_acres', 'sum_percent_TP_TN']
 
     out5_TP_file = './WAM/Outputs/Watershed_single_obj_opti_TP.csv'
-    out5_TP = os.path.join(Working_path, out5_TP_file)
+    out5_TP = os.path.join(working_path, out5_TP_file)
 
     # out5_TN_file = './WAM/Outputs/Watershed_single_obj_opti_TN.csv'
     # out5_TN = os.path.join(Working_path, out5_TN_file)
@@ -577,12 +574,14 @@ if __name__ == "__main__":
     #srun --nodes=1 --partition=general --pty /bin/bash
     # test with small inputs.
     if len(sys.argv) != 2:
-        print("Usage: python WAM_Network_Automation_v9_TP_New.py <time_periods>")
-        print("Example: python WAM_Network_Automation_v9_TP_New.py daily")
+        print("Usage: python WAM_Network_Automation_v9_TP_New.py <time_periods> <working_path>")
+        print("Example: python WAM_Network_Automation_v9_TP_New.py '2018, 2020' 'path/to/working/directory'")
         time_periods = None
-        WAM_Network_Automation_TP(time_periods)
+        working_path = os.getcwd()
+        WAM_Network_Automation_TP(working_path, time_periods)
         # sys.exit(1)
 
     else:
         time_periods = sys.argv[1]
-        WAM_Network_Automation_TP(time_periods)
+        working_path = sys.argv[2]
+        WAM_Network_Automation_TP(working_path, time_periods)
