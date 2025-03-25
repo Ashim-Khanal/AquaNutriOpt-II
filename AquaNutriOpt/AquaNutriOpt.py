@@ -3,7 +3,7 @@ import pulp
 import os
 import sys
 import time
-import math
+#import math
 #from utils import *
 import pandas as pd
 from AquaNutriOpt.GenInputMO import gen_input_mo
@@ -26,17 +26,21 @@ class EPA:
         print('**************************************************************')
         self.Um = {}
         self.C = np.Inf
+        self.ZZ = ['P'] # Default objective is set to minimize the phosphorus
         self.budgetList = []
-        self.writefiles = True
-        self.Correction_Factor_P = 0.55
-        self.Correction_Factor_N = 1.05
-        self.timeLimit = 10
-        self.softwareCode = 0
+        self.Writefiles = True
+        self.Correction_Factor_P = 0.55  # Average correction factor value for Phosphorus
+        self.Correction_Factor_N = 1.05  # Average correction factor value for Nitrogen
+        self.timeLimit = 15
+        self.softwareCode = 0  # WAM or SWAT selection
+        self.CorrectionCode = 1 #
+        self.BigBound = 99999999999
     # %%
     def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
         self.timeLimit = timeLimit
 
     def Solve_SO_Det_Model(self, Budget=np.Inf):
+
         if Budget == np.Inf:
             pass
         else:
@@ -131,7 +135,13 @@ class EPA:
         print('Generating the results ... ***********************************')
         print('**************************************************************')
         print('**************************************************************')
-        #if self.writefiles:
+
+        if self.C == 0:
+            self.baseLoad = MODEL.objective.value()
+
+        elif self.C != 0:
+            self.TargetLoad = MODEL.objective.value()
+
         file = open('Res_BMPs_SO_{}.txt'.format(self.C), 'w+')
         Counter = 0
         for i in self.NN:
@@ -151,21 +161,23 @@ class EPA:
         for j in self.NN:
             for i in self.NNn_i[j]:
                 try:
-                    #            print('{} ==> {} : {}'.format(i, j, Fijm[(i,j,'P')].value() ) )
-                    file.write('{}_{} {}\n'.format(i, j, str(Fijm[(i, j, 'P')*self.Correction_Factor_P].value())))
+                    # print('{} ==> {} : {}'.format(i, j, Fijm[(i,j,'P')].value() ) )
+
+                    file.write('{}_{} {}\n'.format(i, j, str(Fijm[(i, j, 'P')].value())))
                 except:
                     pass
 
         file.close()
-        print('**************************************************************')
-        print('**************************************************************')
-        print('Solution is done. Find the results in the directory.**********')
-        print('**************************************************************')
-        print('**************************************************************')
+
+        print('******************************************************************************')
+        print('******************************************************************************')
+        print('Optimization solutions are ready. Find the results in the directory.**********')
+        print('******************************************************************************')
+        print('******************************************************************************')
 
     # %%
     def Solve_SOTI_Det_Model(self, Budget=np.Inf):
-        self.TargetLoad = 0
+
         if isinstance(self.TimePeriod, int) != True:
             print("Please Enter integer values")
             return "Null"
@@ -260,17 +272,26 @@ class EPA:
         print('Solving the model ... ****************************************')
         print('**************************************************************')
         print('**************************************************************')
+
         self.solver = pulp.PULP_CBC_CMD(timeLimit=self.timeLimit, msg=False)
         #self.solver = pulp.getSolver('PULP_CBC_CMD', timeLimit = self.timeLimit)
         #solver = pulp.get_solver(self.solver)
+
         Sol = MODEL.solve(self.solver)
-        self.TargetLoad = MODEL.objective.value()
+
         print('**************************************************************')
         print('**************************************************************')
         print('Generating the results ... ***********************************')
         print('**************************************************************')
         print('**************************************************************')
-        if self.writefiles:
+
+        if Budget != 0:
+            self.TargetLoad = MODEL.objective.value()
+
+        if Budget == 0:
+            self.baseLoad = MODEL.objective.value()
+
+        if self.Writefiles:
             file = open('Res_BMPs_SOTI_{}.txt'.format(self.C), 'w+')
             Counter = 0
             for i in self.NN:
@@ -290,19 +311,19 @@ class EPA:
             for j in self.NN:
                 for i in self.NNn_i[j]:
                     try:
-            #            print('{} ==> {} : {}'.format(i, j, Fijm[(i,j,'P')].value() ) )
-                        file.write('{}_{} {}\n'.format(i,j, str(sum(FijmTime[(i,j,self.ZZ[0],Time)].value() for Time in range(self.TimePeriod))) ))
+                        #print('{} ==> {} : {}'.format(i, j, Fijm[(i,j,'P')].value() ) )
+                        file.write('{}_{} {}\n'.format(i,j, str(sum(FijmTime[(i,j,self.ZZ[0],Time)].value() for Time in range(self.TimePeriod)))))
                     except:
                         pass
-
             file.close()
+
             print('**************************************************************')
             print('**************************************************************')
-            print('Solution is done. Find the results in the directory.**********')
-        print('**************************************************************')
-        print('**************************************************************')
+            print('Optimization Solution are ready. Find the results in the directory')
+            print('**************************************************************')
 
     def Solve_MOTI_Det_Model(self):
+
         self.TargetLoad = 0
         self.singleObjResults = []
         sys.setrecursionlimit(3000)
@@ -311,7 +332,7 @@ class EPA:
         else:
             BigM = 999999
         epsilon = 0.000001
-        self.writefiles = False
+        self.Writefiles = False
 
 
         # #if self.TimePeriod > 1:
@@ -340,10 +361,14 @@ class EPA:
         for item in self.MM:
             ZZ = [item]
             self.Set_Objective(item)
-            self.Set_BoundedMeasures([itm for itm in self.MM if itm not in ZZ], [99999])
+            self.Set_BoundedMeasures([itm for itm in self.MM if itm not in ZZ], [999999999 for itm in self.MM if itm not in ZZ ], 'MO')
             for values in self.budgetList:
                 self.Solve_SOTI_Det_Model(values)
-                self.singleObjResults.append(self.TargetLoad)
+                if values == 0:
+                    self.singleObjResults.append(self.baseLoad)
+                else:
+                    self.singleObjResults.append(self.TargetLoad)
+        self.baseLoad_MO = [self.singleObjResults[0], self.singleObjResults[len(self.budgetList)]]
 
         bounddata.write('Budget, P, N\n')
         for i in range(len(self.budgetList)):
@@ -351,13 +376,13 @@ class EPA:
             if self.budgetList[i] != self.budgetList[-1]:
                 bounddata.write('\n')
 
-        self.writefiles = True
+        self.Writefiles = True
         time.sleep(1)
 
         """Read the bound data (single objective results) for P and N w.r.t their budgets"""
 
         bounddata = open(file_path)
-        bounddata.readline()  # reading the header (the name of the header is of no concern to the algorithm.
+        bounddata.readline()  # reading the header (the name of the header is of no concern to the algorithm).
         PhosphorusBound = []
         NitrogenBound = []
 
@@ -630,9 +655,14 @@ class EPA:
                     break
             if not dominated:
                 non_dominated_points[tuple(allpoints[i])] = bounds[i]
+        sorted_dict = dict(sorted(non_dominated_points.items()))
+        #sorted_list = sorted(non_dominated_points, key=lambda x: x[0])
+        self.non_dominated_points = sorted_dict
         #for i in range(len(non_dominated_points)):
-        for point, bound in non_dominated_points.items():
+        for point, bound in self.non_dominated_points.items():
+            #self.non_dominated_points.append(point)
             file2.write(','.join(map(str, point)) + ',' + str(bound) + '\n')
+
         file2.close()
         # return non_dominated
 
@@ -684,6 +714,7 @@ class EPA:
         zero_budget_values = [self.singleObjResults[0], self.singleObjResults[len(self.budgetList)]]
 
         # Convert the sorted data into a dictionary
+
         result_dict = {
             'Budget': [row[0] for row in data],
             'PhosphorousLoad': [row[1] for row in data],
@@ -726,6 +757,7 @@ class EPA:
                     #print("itr {} , list is {}, index {}".format(i, filtered_nondominated, temp_index))
 
                     index = data.index(filtered_nondominated[temp_index])
+
                     # if (abs(percent_reduction[index][0]-percent_reduction[i+1][0]) <= closeness) and (abs(percent_reduction[index][1]-percent_reduction[i+1][1]) <= closeness):
                     # del filtered_nondominated[temp_index]
 
@@ -752,6 +784,7 @@ class EPA:
                 pass
                 #print("exception occurred at iteration {}".format(i))
 
+        self.filtered_nondominated = filtered_nondominated
         file_name = 'Filtered_NonDominatedPoints.csv'
         file_path = os.path.join(self.MOOPATH, file_name)
         new_file = open(file_path, 'w+')
@@ -762,6 +795,35 @@ class EPA:
 
         #non_dominated_points = find_non_dominated(allpoints, bounds)
     # %%
+    def Get_Corrected_Loads_MO(self, setting = 'Normal'):  # information of points (P, N) loads will be corrected with the aid of base loading zero budget loads.
+
+        correctedLoad = [0 for i in range(len(self.MM))]
+        self.CorrectedPointsMO = []
+        if setting == 'Normal':
+            #for point, bound in non_dominated_points.items():
+            for point, bound in self.non_dominated_points.items():
+                correctedLoad[0] = self.baseLoad_MO[0] * (1 - self.Correction_Factor_P) + point[1] * self.Correction_Factor_P
+                correctedLoad[1] = self.baseLoad_MO[1] * (1 - self.Correction_Factor_N) + point[2] * self.Correction_Factor_N
+                self.CorrectedPointsMO.append((point[0], correctedLoad[0], correctedLoad[1], bound))
+
+            with open("MOOResults/CorrectedNDPs.csv", "w") as file:
+                file.write('Use BoundReference column to determine the corrected points with optimization points from NonDominatedPoints file \n')
+                file.write('Budget, P_Corrected, N_Corrected, BoundReference\n')
+                for items in self.CorrectedPointsMO:
+                    file.write(','.join(map(str, items)) + '\n')
+                    #file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
+
+        elif setting == 'Filtered' or 'filtered':
+            for items in self.filtered_nondominated:
+                correctedLoad[0] = self.baseLoad_MO[0] * (1 - self.Correction_Factor_P) + items[1] * self.Correction_Factor_P
+                correctedLoad[1] = self.baseLoad_MO[1] * (1 - self.Correction_Factor_N) + items[2] * self.Correction_Factor_N
+                self.CorrectedPointsMO.append((items[0], correctedLoad[0], correctedLoad[1], items[3]))
+            with open("MOOResults/Corrected_FilteredNDPs.csv", "w") as file:
+                file.write('Use BoundReference column to determine the corrected points with postprocessed points from FilteredNonDominatedPoints file \n')
+                file.write('Budget, P_Corrected, N_Corrected, BoundReference\n')
+                for items in self.CorrectedPointsMO:
+                    file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
+
     def Read_Data(self, Network, BMP_Tech, TimePeriod=1):
         self.TimePeriod = TimePeriod
         if isinstance(self.TimePeriod, int) != True:
@@ -856,9 +918,9 @@ class EPA:
             print(Header)
             return
 
-        self.ALPHAtm = {};
-        self.Cit = {};
-        self.ALPHA_HATtm = {};
+        self.ALPHAtm = {}
+        self.Cit = {}
+        self.ALPHA_HATtm = {}
         while True:
             l = TBFile.readline()
             if l == '':
@@ -893,7 +955,7 @@ class EPA:
 
     def Set_Budget_List(self, budgetList):
         if len(budgetList) < 0:
-            print("WARNING: no budgets provided.")
+            print("WARNING: no budgets provided")
         if 0 not in budgetList:
             print("WARNING: CANNOT RUN WITHOUT 0 Budget")
             raise ValueError("Please input 0 as a budget for calculating initial bounds")
@@ -936,7 +998,7 @@ class EPA:
 
             # %% Set the target location
 
-    def Set_TargetLocation(self, location):
+    def Set_TargetLocation(self, location='1'):
         if not (location in self.NN):
             if (self.NN == []):
                 print("No network has been imported yet. Please read the network data using 'Read_Data'")
@@ -957,33 +1019,53 @@ class EPA:
                 return
             else:
                 print(
-                    "The entered measure '{}' does exit not in the list of measures. Make sure you enter a string.".format(
+                    "The entered measure '{}' does not exist in the list of measures. Make sure you enter a string.".format(
                         Objective_Measure))
                 print(self.MM)
                 return
         self.ZZ = [Objective_Measure]  # Set of Objectives
-        if self.ZZ[0] == 'P':
-            self.Correction_Factor = self.Correction_Factor_P
-        else:
-            self.Correction_Factor = self.Correction_Factor_N
+
 
     # %% Set the limits of the bounded objectives
-    def Set_BoundedMeasures(self, Measures, Bounds):
-        if not (IsSubset(Measures, self.MM)):
-            if self.MM == []:
-                print(
-                    "The list of measure has not been imported yet. Please read the network data using 'Read_Data' first.")
-                return
-            else:
-                print(
-                    "At least one of the entered measures '{}' does not exit in the list of measures. Make sure you enter a string.".format(
-                        Measures))
-                print(self.MM)
-                return
-        self.ZZp = Measures  # Set of bounded measures
-        self.Um = {}
-        for i in range(len(self.ZZp)):
-            self.Um[self.ZZp[i]] = Bounds[i]
+    def Set_BoundedMeasures(self, Measures, Bounds, obj = 'SO'):
+
+        if obj == 'SO':
+            if not (IsSubset(Measures, self.MM)):
+                if self.MM == []:
+                    print(
+                        "The list of measure has not been imported yet. Please read the network data using 'Read_Data' first.")
+                    return
+                else:
+                    print(
+                        "At least one of the entered measures '{}' does not exit in the list of measures. Make sure you enter a string.".format(
+                            Measures))
+                    print(self.MM)
+                    return
+
+            self.ZZp = Measures  # Set of bounded measures
+            self.Um = {}
+            for i in range(len(self.ZZp)):
+                self.Um[self.ZZp[i]] = self.BigBound
+
+            self.Corrected_Bound(Bounds)
+
+        elif obj == 'MO':
+            if not (IsSubset(Measures, self.MM)):
+                if self.MM == []:
+                    print(
+                        "The list of measure has not been imported yet. Please read the network data using 'Read_Data' first.")
+                    return
+                else:
+                    print(
+                        "At least one of the entered measures '{}' does not exist in the list of measures. Make sure you enter a string.".format(
+                            Measures))
+                    print(self.MM)
+                    return
+
+            self.ZZp = Measures  # Set of bounded measures
+            self.Um = {}
+            for i in range(len(self.ZZp)):
+                self.Um[self.ZZp[i]] = Bounds[i]
 
         # %% Set the solver
         def Set_Solver(solver):
@@ -1235,6 +1317,89 @@ class EPA:
             filtered_bmps.to_csv('BMPsInfo.csv', index=False)
         except:
             print("BMPsInfo can not be created")
+
+    def Corrected_Bound(self, Bounds): #User gives the bound corresponding to WAM/SWAT simulations and this functions converts to optimization bounds
+
+        save_dir = "Corrected_Loads_and_Bounds_SO"
+        os.makedirs(save_dir, exist_ok=True)
+
+        budget = self.C
+        objective = self.ZZ[0]
+        #for items in self.ZZp:  # limit people to put only 1 bounded measure
+        #self.Corrected_boundLoad = [0 for i in range(len(self.ZZp))]
+
+        self.Writefiles = False     #it does not write the output files for zero budget run
+        self.Set_Objective(self.ZZp[0])
+        self.Solve_SOTI_Det_Model(Budget=0)
+        self.Um = {}
+        self.Writefiles = True
+
+        Corrected_boundLoad = Bounds
+
+        for i in range(len(Bounds)):
+            if self.ZZp[i] == 'P':
+                Corrected_boundLoad[i] = (Bounds[i] + self.baseLoad * (self.Correction_Factor_P - 1)) / self.Correction_Factor_P
+            elif self.ZZp[i] == 'N':
+                Corrected_boundLoad[i] = (Bounds[i] + self.baseLoad * (self.Correction_Factor_N - 1)) / self.Correction_Factor_N
+            else:
+                print("***** Please put the correct nutrient *****")
+                Corrected_boundLoad[i] = Bounds[i]
+
+        self.C = budget
+        self.ZZ[0] = objective
+
+        for i in range(len(Corrected_boundLoad)):
+            self.Um[self.ZZp[i]] = Corrected_boundLoad[i]
+
+        #file = open(save_dir + '/' + 'correctedBound.txt', 'w+')
+
+        #for i in range(len(self.ZZp)):
+            #file.write('The corrected Bound for the bounded nutrient {} loading at the Target Node was tuned to {}'.format(self.ZZp[i], Corrected_boundLoad))
+        #print(" The corrected bound values are {}".format(Corrected_boundLoad))
+        #file.close()
+
+
+    def Get_CorrectedLoad_SO(self): # corrected nutrient load to be optimized at the target
+
+        print("**************************************")
+        print("***** Getting Corrected Load *********")
+        print("**************************************")
+
+        save_dir = "Corrected_Loads_and_Bounds_SO"
+        os.makedirs(save_dir, exist_ok=True)
+        filename = 'correctedLoad.txt'
+        filepath = os.path.join(save_dir, filename)
+
+        if self.C == 0:
+            file = open(filepath, 'w+')
+            file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.baseLoad))
+            file.close()
+
+        elif self.C != 0:
+            budget = self.C
+
+            self.Writefiles = False
+
+            self.ZZp = [itm for itm in self.MM if itm not in self.ZZ]  # Set of bounded measures
+            self.Um = {}
+            for i in range(len(self.ZZp)):
+                self.Um[self.ZZp[i]] = self.BigBound
+
+            self.Solve_SOTI_Det_Model(Budget=0)
+
+            if self.ZZ[0] == 'P':
+                self.correctedLoad = self.baseLoad * (1 - self.Correction_Factor_P) + self.TargetLoad * self.Correction_Factor_P
+
+            elif self.ZZ[0] == 'N':
+                self.correctedLoad = self.baseLoad * (1 - self.Correction_Factor_N) + self.TargetLoad * self.Correction_Factor_N
+
+
+            self.C = budget
+
+            file = open(save_dir + '/' + 'correctedLoad.txt', 'w+')
+            file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.correctedLoad))
+            file.close()
+
 # %%
 def IsSubset(X, Y):
     return len(np.setdiff1d(X, Y)) == 0

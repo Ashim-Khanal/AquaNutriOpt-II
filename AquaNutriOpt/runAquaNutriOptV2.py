@@ -1,21 +1,24 @@
-from AquaNutriOpt.SWAT_utils import *
-
-#Example= EPA()
-
-""" Single Obj. Model"""
-#Example.Read_Data('Net_Data.csv','BMP_Tech.csv')
-
-#Setting the cost budget
-#Example.Set_Cost_Budget(100000)
-
-#Setting the target node
-#Example.Set_TargetLocation('1')
-
-#Example.Set_BoundedMeasures(['N'], [0])
-#Example.Set_Objective('P')
-
-#Solving single objective model
-#Example.Solve_SO_Det_Model()
+from AquaNutriOpt import *
+#
+# Example = EPA()
+# #
+# # """ Single Obj. Model"""
+# Example.Read_Data('Net_Data.csv','BMP_Tech.csv')
+# #
+# # # Setting the target node
+# Example.Set_TargetLocation('46')
+# #
+# Example.Set_BoundedMeasures(['N'], [99999999])
+# #
+# # # Setting the cost budget
+# Example.Set_Cost_Budget(0)
+#
+# Example.Set_Objective('P')
+#
+# #Solving single objective model
+# Example.Solve_SO_Det_Model()
+#
+# Example.Get_CorrectedLoad_SO()
 
 
 # """ Single Objective Time Indexed Model """
@@ -33,42 +36,43 @@ from AquaNutriOpt.SWAT_utils import *
 # and BMP_Tech.csv. InputGenerator module can create this file.
 # Else it can be self created manually without using the InputGenerator
 # Module. The format guidelines is provided later in this User Guide"""
-# Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 3)
+#Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 3)
 # """Set the available budget for BMPs/TFs for the single objective
 # optimization"""
-# Example.Set_Cost_Budget(10000)
+#Example.Set_Cost_Budget(100000000)
 # """Set the target location where objective nutrient is to be minimized.
 # If Input network file has lake as Node 1 then """
-# Example.Set_TargetLocation('1')
+#Example.Set_TargetLocation('46')
 # """ If we want to bound the other nutrient to a certain value say
 # Nitrogen while minimizing Phosphorus is the objective"""
-# Example.Set_BoundedMeasures(['N'],[99999])
+#Example.Set_BoundedMeasures(['P'],[999999999999])
 # """ In order to Set Phosphorus as the Objective"""
-# Example.Set_Objective('P')
+#Example.Set_Objective('N')
 # """Set the TimeLimit for each optimization problem in seconds.
-# In Multiobjective optimization numerous single objective optimization
-#  are run"""
+# In Multiobjective optimization numerous single objective optimization iterations are run"""
 # Example.Set_TimeLimit(15)
-# """Solve Single Objective Optimization with time periods provided"""
+# # """Solve Single Objective Optimization with time periods provided"""
 # Example.Solve_SOTI_Det_Model()
 #
+# Example.Get_CorrectedLoad_SO()
 # Example.Set_Measure_Budget('N',99999)
 
 """FOR Multi Objective Time Indexed Model (Objectives will be to minimize P, N, Budget)"""
 
-# Example = EPA()
+Example = EPA()
 # Example.WAM_InputGenerator_MO(3)
-# Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 3)
-#
-# #default value is set to 10 seconds
-# Example.Set_TimeLimit(15) # for solving each MIP optimization problem
-#
-# # # Setting Budget List (Give Inputs of the budgets you wish to run experiments for)
-# Example.Set_Budget_List([0, 100000, 500000, 1000000])
-# # # Setting the target node
-# Example.Set_TargetLocation('1')
-# Example.Solve_MOTI_Det_Model()
-# Example.Filter_NonDominatedPoints(0.28)
+Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 3)
+
+#default value is set to 10 seconds
+Example.Set_TimeLimit(15) # for solving each MIP optimization problem
+
+# # Setting Budget List (Give Inputs of the budgets you wish to run experiments for)
+Example.Set_Budget_List([0, 10000000, 100000000])
+# # Setting the target node
+Example.Set_TargetLocation('46')
+Example.Solve_MOTI_Det_Model()
+Example.Filter_NonDominatedPoints(0.28)
+Example.Get_Corrected_Loads_MO(setting = 'Filtered')
 
 
 
@@ -111,17 +115,17 @@ from AquaNutriOpt.SWAT_utils import *
 
 """FOR SWAT Multi Objective Time Indexed Model (Objectives will be to minimize P, N, Budget)"""
 
-Example = EPA()
-#Example.WAM_InputGenerator_MO(22)
-Example.SWAT_InputGenerator_MO(22)
-Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 22)
-
-#default value is set to 10 seconds
-Example.Set_TimeLimit(15) # for solving each MIP optimization problem
-
-# # Setting Budget List (Give Inputs of the budgets you wish to run experiments for)
-Example.Set_Budget_List([0, 100000, 500000, 1000000])
-# # Setting the target node
-Example.Set_TargetLocation('46')
-Example.Solve_MOTI_Det_Model()
-Example.Filter_NonDominatedPoints(0.28)
+# Example = EPA()
+# #Example.WAM_InputGenerator_MO(22)
+# Example.SWAT_InputGenerator_MO(22)
+# Example.Read_Data('Net_Data.csv','BMP_Tech.csv', 22)
+#
+# #default value is set to 10 seconds
+# Example.Set_TimeLimit(15) # for solving each MIP optimization problem
+#
+# # # Setting Budget List (Give Inputs of the budgets you wish to run experiments for)
+# Example.Set_Budget_List([0, 100000, 500000, 1000000])
+# # # Setting the target node
+# Example.Set_TargetLocation('46')
+# Example.Solve_MOTI_Det_Model()
+# Example.Filter_NonDominatedPoints(0.28)
