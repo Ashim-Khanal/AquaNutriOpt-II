@@ -12,8 +12,8 @@ from AquaNutriOpt.SWAT_Network_Automation_MO import swat_network_automation_mo
 from AquaNutriOpt.SWAT_Network_Automation_TN import swat_network_automation_tn
 from AquaNutriOpt.SWAT_Network_Automation_TP import swat_network_automation_tp
 from AquaNutriOpt.WAM_Network_Automation_MO import wam_network_automation_mo
-from AquaNutriOpt.WAM_Network_Automation_TN import wam_network_automation_tn
-from AquaNutriOpt.WAM_Network_Automation_TP import wam_network_automation_tp
+from AquaNutriOpt.WAM_Network_Automation_TN import WAM_Network_Automation_TN
+from AquaNutriOpt.WAM_Network_Automation_TP import WAM_Network_Automation_TP
 
 
 BigM = 9999
@@ -35,6 +35,7 @@ class EPA:
         self.softwareCode = 0  # WAM or SWAT selection
         self.CorrectionCode = 1 #
         self.BigBound = 99999999999
+        self.wamTimePeriods = None  # Time periods for WAM, None or string such as '2018, 2020'
     # %%
     def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
         self.timeLimit = timeLimit
@@ -1258,7 +1259,7 @@ class EPA:
     #### Osama and Long's Script
     def run_scriptTP(self):
         if self.softwareCode == 0:
-            wam_network_automation_tp(os.getcwd())
+            WAM_Network_Automation_TP(os.getcwd(), self.wamTimePeriods)
         elif self.softwareCode == 1:
             swat_network_automation_tp(os.getcwd())
             
@@ -1266,7 +1267,7 @@ class EPA:
 
     def run_scriptTN(self):
         if self.softwareCode == 0:
-            wam_network_automation_tn(os.getcwd())
+            WAM_Network_Automation_TN(os.getcwd(), self.wamTimePeriods)
         elif self.softwareCode == 1:
             swat_network_automation_tn(os.getcwd())
     ######
