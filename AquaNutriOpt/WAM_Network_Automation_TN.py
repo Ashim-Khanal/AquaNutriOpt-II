@@ -590,8 +590,8 @@ if __name__ == "__main__":
     #srun --nodes=1 --partition=general --pty /bin/bash
     # test with small inputs.
     if len(sys.argv) != 3:
-        print("Usage: python WAM_Network_Automation_TN.py <working_path> <time_periods>")
-        print("Example: python WAM_Network_Automation_TN.py /path/to/working_directory '2018, 2020'")
+        print("Usage: python WAM_Network_Automation_TN.py <time_periods> <working_path>")
+        print("Example: python WAM_Network_Automation_TN.py '2018, 2020' /path/to/working_directory")
         time_periods = None
         working_path = os.getcwd()
         WAM_Network_Automation_TN(working_path, time_periods)
