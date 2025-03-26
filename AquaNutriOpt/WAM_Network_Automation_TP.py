@@ -11,7 +11,7 @@ import os
 from os import listdir
 from os.path import isfile, join
 import sys
-from utils import *
+from AquaNutriOpt.utils import *
 
 # Example usage
 def WAM_Network_Automation_TP(working_path: str, time_periods: str):
