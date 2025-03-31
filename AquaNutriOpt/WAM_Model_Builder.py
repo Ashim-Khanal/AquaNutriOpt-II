@@ -17,15 +17,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def wam_model_builder():
+def wam_model_builder(working_path: str):
     gdal.PushErrorHandler('CPLQuietErrorHandler')
 
     ######## Step 01: Run gdal_polygonize ################ 
     print("Step 1 - Run gdal_polygonize")
-    Working_path = os.getcwd()
-    os.chdir(Working_path)
 
-    Wam_path = os.path.join(Working_path, 'WAM')
+    Wam_path = os.path.join(working_path, 'WAM')
     Inputs_path = os.path.join(Wam_path, 'Inputs')
     Outputs_path = os.path.join(Wam_path, 'Outputs')
 
@@ -44,14 +42,14 @@ def wam_model_builder():
         print(f"Create {Outputs_path} in the current working directory!")
         os.makedirs(Outputs_path)
 
-    vector_path = "./Subbasins.shp"
+    vector_path = "Subbasins.shp"
     vector_path = os.path.join(Outputs_path, vector_path)
     # #if file exist, then delete it
     driver = ogr.GetDriverByName("ESRI Shapefile")
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = "./Streamnode.asc"
+    raster_path = "Streamnode.asc"
     raster_path = os.path.join(Inputs_path, raster_path)
     raster = gdal.Open(raster_path)
     srcBand = raster.GetRasterBand(1)  # Use Band 1 for polygonization
@@ -105,7 +103,7 @@ def wam_model_builder():
     ds = driver.Open(vector_path, 0)  # Read-only mode
 
     # # Create a new shapefile to store dissolved output
-    dissolve_vector_path = "./Dissolved_subbasins.shp"
+    dissolve_vector_path = "Dissolved_subbasins.shp"
     dissolve_vector_path = os.path.join(Outputs_path, 
                                         dissolve_vector_path)
     # #if file exist, then delete it
@@ -136,7 +134,7 @@ def wam_model_builder():
 
     print(10*"-", "Fix geometries - Land_Use_Valid.shp", 10*"-")
 
-    fix_vector_path = "./Land_Use_Valid.shp"
+    fix_vector_path = "Land_Use_Valid.shp"
     fix_vector_path = os.path.join(Inputs_path, 
                                 fix_vector_path)
     #if file exist, then delete it
@@ -144,7 +142,7 @@ def wam_model_builder():
     if os.path.exists(fix_vector_path):
         driver.DeleteDataSource(fix_vector_path)  # Remove existing file
 
-    ds_path = "./Land_Use.shp"
+    ds_path = "Land_Use.shp"
     ds_path = os.path.join(Inputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Return a ogr.DataSource object
@@ -201,7 +199,7 @@ def wam_model_builder():
     ######### Step 03-02: Fix geometries - Dissolved_subbasins.shp ################ 
 
     print(10*"-", "Fix geometries - New_dissolved_subbasins.shp", 10*"-")
-    fix_vector_path = "./Dissolved_subbasins_valid.shp"
+    fix_vector_path = "Dissolved_subbasins_valid.shp"
     fix_vector_path = os.path.join(Outputs_path, 
                                 fix_vector_path)
     # #if file exist, then delete it
@@ -209,7 +207,7 @@ def wam_model_builder():
     if os.path.exists(fix_vector_path):
         driver.DeleteDataSource(fix_vector_path)  # Remove existing file
 
-    ds_path = "./Dissolved_subbasins.shp"
+    ds_path = "Dissolved_subbasins.shp"
     ds_path = os.path.join(Outputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Return a ogr.DataSource object
@@ -258,7 +256,7 @@ def wam_model_builder():
 
     print(10*"-", "Extract the overlapping portions of polygons", 10*"-")
 
-    overlapping_vector_path = "./Land_Subbasin_Intersection.shp"
+    overlapping_vector_path = "Land_Subbasin_Intersection.shp"
     overlapping_vector_path = os.path.join(Outputs_path, 
                                         overlapping_vector_path)
 
@@ -267,7 +265,7 @@ def wam_model_builder():
     if os.path.exists(overlapping_vector_path):
         driver.DeleteDataSource(overlapping_vector_path)  # Remove existing file
 
-    land_usage_path =  "./Land_Use_Valid.shp"
+    land_usage_path =  "Land_Use_Valid.shp"
     land_usage_path = os.path.join(Inputs_path, land_usage_path)
     try:
         land_usage_ds = ogr.Open(land_usage_path, 0)  # Read-only
@@ -278,7 +276,7 @@ def wam_model_builder():
     land_layer = land_usage_ds.GetLayer()
     crs = land_layer.GetSpatialRef()
 
-    subbasins_ds_path = "./Dissolved_subbasins_valid.shp"
+    subbasins_ds_path = "Dissolved_subbasins_valid.shp"
     subbasins_ds_path = os.path.join(Outputs_path, subbasins_ds_path)
     try:
         subbasins_ds = ogr.Open(subbasins_ds_path, 0)
@@ -313,7 +311,7 @@ def wam_model_builder():
     ######## Step 04: Convert the raster file  UK_TP_Existing.tif to a Point based shape file ################ 
     print(10*"-", "Convert the raster file UK_TP_Existing.tif to a shape file ", 10*"-")
 
-    vector_path = "./Uk_tp_pt.shp"
+    vector_path = "Uk_tp_pt.shp"
     vector_path = os.path.join(Outputs_path,
                             vector_path)
 
@@ -322,7 +320,7 @@ def wam_model_builder():
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = "./UK_TP_Existing.tif"  # Replace with your actual file path
+    raster_path = "UK_TP_Existing.tif"  # Replace with your actual file path
     raster_path = os.path.join(Inputs_path, raster_path)
     raster_ds = gdal.Open(raster_path) # return a gdal.Dataset object
     TP_band = raster_ds.GetRasterBand(1)
@@ -392,7 +390,7 @@ def wam_model_builder():
 
     print(10*"-", "Spatial Join", 10*"-")
     batch_size=5000
-    overlapping_vector_path = "./Sub_LU_TP.shp"
+    overlapping_vector_path = "Sub_LU_TP.shp"
     overlapping_vector_path = os.path.join(Outputs_path, 
                                         overlapping_vector_path)
 
@@ -401,7 +399,7 @@ def wam_model_builder():
     if os.path.exists(overlapping_vector_path):
         driver.DeleteDataSource(overlapping_vector_path)  # Remove existing file
 
-    land_usage_path =  "./Land_Subbasin_Intersection.shp"
+    land_usage_path =  "Land_Subbasin_Intersection.shp"
     land_usage_path = os.path.join(Outputs_path, land_usage_path)
 
     land_usage_ds = ogr.Open(land_usage_path, 
@@ -410,7 +408,7 @@ def wam_model_builder():
     land_layer = land_usage_ds.GetLayer()
     crs = land_layer.GetSpatialRef()
 
-    phosphorus_path = "./Uk_tp_pt.shp"
+    phosphorus_path = "Uk_tp_pt.shp"
     phosphorus_path = os.path.join(Outputs_path, phosphorus_path)
 
     phosphorus_ds = ogr.Open(phosphorus_path, 
@@ -518,14 +516,14 @@ def wam_model_builder():
 
     # ############### Step 06: Computing Area ################
     print(10*"-", "Area", 10*"-")
-    out_path = "./Sub_LU_TP_Area.shp"
+    out_path = "Sub_LU_TP_Area.shp"
     out_path = os.path.join(Outputs_path, out_path)
     # # #if file exist, then delete it
     driver = ogr.GetDriverByName("ESRI Shapefile")
     if os.path.exists(out_path):
         driver.DeleteDataSource(out_path)  # Remove existing file
 
-    ds_path = "./Sub_LU_TP.shp"
+    ds_path = "Sub_LU_TP.shp"
     ds_path = os.path.join(Outputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Write; Return a ogr.DataSource object
@@ -560,11 +558,11 @@ def wam_model_builder():
     # ####################Step 07: Group By####################################
     print(10*"-", "Group by the New_Sub_LU_TP.shp by LUID, B_GRIDCODE and compute the sum of AREA, and GRIDCODE ", 10*"-")
     # export to a Excel file
-    out_path = './Watershed_Subbasin_LU_TP.xlsx'
+    out_path = 'Watershed_Subbasin_LU_TP.xlsx'
     out_path = os.path.join(Outputs_path, out_path)
 
     # Open the shapefile
-    ds_path = "./Sub_LU_TP_Area.shp"
+    ds_path = "Sub_LU_TP_Area.shp"
     ds_path = os.path.join(Outputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Write; Return a ogr.DataSource object
@@ -618,3 +616,13 @@ def wam_model_builder():
 
     # create a SLURM's srun command to run the script
 
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python WAM_Model_Builder.py <working_path>")
+        print("Using current working directory as the working path")
+        working_path = os.getcwd()
+    else:
+        working_path = sys.argv[1]
+    
+    wam_model_builder(working_path)
