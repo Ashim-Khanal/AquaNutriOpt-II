@@ -11,8 +11,7 @@ import numpy as np
 from osgeo import gdal, ogr, osr
 from osgeo_utils.gdal2xyz import gdal2xyz
 import csv
-# from dbfread import DBF
-# import geopandas as gpd
+import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -386,10 +385,9 @@ def wam_model_builder(working_path: str):
     vector_ds = None
     raster_ds = None
 
-    # ###############Step 05: Batch-wise Spatial join ############
+    # # ###############Step 05: Batch-wise Spatial join using Geopandas ############
 
     print(10*"-", "Spatial Join", 10*"-")
-    batch_size=5000
     overlapping_vector_path = "Sub_LU_TP.shp"
     overlapping_vector_path = os.path.join(Outputs_path, 
                                         overlapping_vector_path)
@@ -399,120 +397,64 @@ def wam_model_builder(working_path: str):
     if os.path.exists(overlapping_vector_path):
         driver.DeleteDataSource(overlapping_vector_path)  # Remove existing file
 
+    # Input-1: Land_Subbasin_Intersection.shp
     land_usage_path =  "Land_Subbasin_Intersection.shp"
     land_usage_path = os.path.join(Outputs_path, land_usage_path)
 
-    land_usage_ds = ogr.Open(land_usage_path, 
-                            0)  # Read-only
+    land_usage_ds = gpd.read_file(land_usage_path)  # Read-only
 
-    land_layer = land_usage_ds.GetLayer()
-    crs = land_layer.GetSpatialRef()
 
+    # Input-2: Uk_tp_pt.shp
     phosphorus_path = "Uk_tp_pt.shp"
     phosphorus_path = os.path.join(Outputs_path, phosphorus_path)
 
-    phosphorus_ds = ogr.Open(phosphorus_path, 
-                            0)
-    phosphorus_ds_layer = phosphorus_ds.GetLayer()
+    phosphorus_ds = gpd.read_file(phosphorus_path)
 
-    # # # Create output shapefile for the intersected data
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    out_ds = driver.CreateDataSource(overlapping_vector_path)
-    out_layer = out_ds.CreateLayer("Sub_LU_TP", 
-                                geom_type= ogr.wkbPolygon, #polygon
-                                srs=crs)
 
-    # # Copy the fields from land_usage_ds to out_layer
-    land_layer_defn = land_layer.GetLayerDefn()
-    for i in range(land_layer_defn.GetFieldCount()):
-        field_def = land_layer_defn.GetFieldDefn(i)
-        out_layer.CreateField(field_def)
+    """# Add TARGET_FID"""
+    land_usage_ds["TARGET_FID"] = land_usage_ds.index
 
-    # # Add new fields for Point_ID and GRIDCODE
-    point_id_field = ogr.FieldDefn("POINTID", ogr.OFTInteger64)
-    out_layer.CreateField(point_id_field)
+    # Get the CRS from subbasins_land_use
+    subbasins_crs = land_usage_ds.crs
 
-    gridcode_field = ogr.FieldDefn("GRIDCODE", ogr.OFTReal)
-    out_layer.CreateField(gridcode_field)
+    # Transform the geometry of uk_tp_pt to the CRS of subbasins_land_use
+    phosphorus_ds = phosphorus_ds.to_crs(subbasins_crs)
 
-    # # Add new fields for Join_Count and TARGET_FID
-    join_count_field = ogr.FieldDefn("Join_Count", ogr.OFTInteger64)
-    out_layer.CreateField(join_count_field)
+    subbasins_land_use_uk_tp_pt = gpd.sjoin(land_usage_ds,
+                                            phosphorus_ds,
+                                            how='left',
+                                            predicate='intersects',
+                                            )
 
-    polygon_id_field = ogr.FieldDefn("TARGET_FID", ogr.OFTInteger)
-    out_layer.CreateField(polygon_id_field)
+    subbasins_land_use_uk_tp_pt["POINTID"] = subbasins_land_use_uk_tp_pt["POINTID"].fillna(0).astype(int)
 
-    # # get output layer's definition
-    out_layer_defn = out_layer.GetLayerDefn()
-    # # Perform the intersection
-    # # for each polygon in the land_layer
+    subbasins_land_use_uk_tp_pt['index_right'] = subbasins_land_use_uk_tp_pt['index_right'].fillna(0).astype(int)
 
-    # # Process polygons in batches
-    total_polygons = land_layer.GetFeatureCount()
-    # print(f"Total polygons: {total_polygons}")
+    subbasins_land_use_uk_tp_pt['GRIDCODE'] = subbasins_land_use_uk_tp_pt['GRIDCODE'].fillna(0).astype(int)
 
-    for start in range(0, total_polygons, batch_size):
-        end = min(start + batch_size, total_polygons)
-        # print(f"Processing batch: {start+1} to {end}")
+    #subbasins_land_use_uk_tp_pt.head(1)
 
-        land_layer.SetNextByIndex(start)
+    #subbasins_land_use_uk_tp_pt.tail(1)
 
-        for _ in range(start, end):
+    # Create a new column 'JOIN_COUNT' and set it to 0
+    subbasins_land_use_uk_tp_pt['Join_Count'] = 0
 
-            feature = land_layer.GetNextFeature()
-            if feature is None:
-                break
+    # update the 'Join_Count' column 
+    # for each TARGET_FID, count the number of occurrences in the 'TARGET_FID' column. 
+    # If there are multiple occurrences, set the 'Join_Count' to the number of occurrences.
 
-            pol_geom = feature.GetGeometryRef()
-            polygon_id = feature.GetFID()  # Unique ID for each polygon
+    subbasins_land_use_uk_tp_pt['Join_Count'] = subbasins_land_use_uk_tp_pt.groupby('TARGET_FID')['TARGET_FID'].transform('count')
 
-            # Bounding box filter to speed up point processing
-            pol_geom_bb = pol_geom.GetEnvelope()
-            phosphorus_ds_layer.SetSpatialFilterRect(*pol_geom_bb)
 
-            count = 0
-            first_point = None
-            for point_feat in phosphorus_ds_layer:
-                point_geom = point_feat.GetGeometryRef()
-                if pol_geom.Intersects(point_geom):
-                    # store the first point
-                    if first_point is None:
-                        first_point = point_feat
-                    count += 1    
+    # remove the duplicates
+    temp1 = subbasins_land_use_uk_tp_pt.drop_duplicates(subset=['TARGET_FID'], keep='first') # keep the first occurrence
 
-            # Create a new feature in the output layer
-            out_feature = ogr.Feature(out_layer_defn)
-            out_feature.SetGeometry(pol_geom.Clone())
+    # # Convert 'SHAPE_Area' column to a String 
+    temp1['SHAPE_Area'] = temp1['SHAPE_Area'].astype(str)
 
-            # Copy the attributes from the land_layer feature 
-            for i in range(feature.GetFieldCount()):
-                out_feature.SetField(i, feature.GetField(i))
-            
-            # Set Join_Count and TARGET_FID fields
-            out_feature.SetField("Join_Count", count)
-            out_feature.SetField("TARGET_FID", polygon_id)
+    temp1.to_file(overlapping_vector_path, 
+                driver="ESRI Shapefile")
 
-            # # If points intersect, use first point's attributes
-            if first_point is not None:
-                out_feature.SetField("POINTID", first_point.GetField("POINTID"))
-                out_feature.SetField("GRIDCODE", first_point.GetField("GRIDCODE"))
-            else:
-                #set to 0
-                out_feature.SetField("POINTID", 0)
-                out_feature.SetField("GRIDCODE", 0)
-            
-            # Save feature to output layer
-            out_layer.CreateFeature(out_feature)
-        # Reset the spatial filter
-        phosphorus_ds_layer.SetSpatialFilter(None)
-
-    # # Close files
-    out_layer = None
-    phosphorus_ds_layer = None
-    land_layer = None
-    out_ds = None
-    land_usage_ds = None
-    phosphorus_ds = None
 
     # ############### Step 06: Computing Area ################
     print(10*"-", "Area", 10*"-")
@@ -550,9 +492,10 @@ def wam_model_builder(working_path: str):
 
     # # Close files
     feature = None
-    out_layer = None
     layer = None
     ds = None
+    out_layer = None
+    out_ds = None
 
 
     # ####################Step 07: Group By####################################
@@ -583,6 +526,11 @@ def wam_model_builder(working_path: str):
         
         results[luid][gridcode]["Area_ft2"] += area
         results[luid][gridcode]["TP_kg/ha"] += gridcode
+
+    # close the shapefile
+    feature = None
+    layer = None
+    ds = None
 
     # Create a pandas DataFrame from the dictionary
     df = pd.DataFrame.from_dict({(i,j): results[i][j] 
