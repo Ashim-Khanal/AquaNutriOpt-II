@@ -1102,36 +1102,47 @@ class EPA:
 
         if self.Objective == 'P':
             """ write code to change the format of network file"""
-            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv",dtype=object)
-            output_file = "NetworkInfo.csv"
-            n_rows = len(data)
-            start_index = 4+self.TimePeriod
-            columns_to_add = self.TimePeriod
+            if os.path.exists("NetworkInfo.csv"):
+                os.remove("NetworkInfo.csv")
+            os.rename("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv", "NetworkInfo.csv")
+            #data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TP.csv",dtype=object)
+            #output_file = "NetworkInfo.csv"
+            #n_rows = len(data)
+            #start_index = 4+self.TimePeriod
+            #columns_to_add = self.TimePeriod
 
-            new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
-            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            #new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
+            #new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
             # Insert new columns into the DataFrame at the specified position
-            columns = data.columns.tolist()
-            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
-            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            #columns = data.columns.tolist()
+            # Convert the list to a DataFrame
+            #updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            #result = pd.concat([data, new_data], axis=1)[updated_columns]
             # Save the updated DataFrame to a new CSV file
-            result.to_csv(output_file, index=False)
+            #result.to_csv(output_file, index=False)
+            #columns_df = pd.DataFrame([columns])
+            #columns_df.to_csv(output_file, index=False)
 
         elif self.Objective == 'N':
-            """ write code to change the format of network file"""
-            data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv",dtype=object)
-            output_file = "NetworkInfo.csv"
-            n_rows = len(data)
-            start_index = 4
-            columns_to_add = self.TimePeriod
-            new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
-            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            if os.path.exists("NetworkInfo.csv"):
+                os.remove("NetworkInfo.csv")
+            os.rename("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv", "NetworkInfo.csv")
+            # """ write code to change the format of network file"""
+            # data = pd.read_csv("WAM/Outputs/WAM_final_output_single_obj_optim_TN.csv",dtype=object)
+            # output_file = "NetworkInfo.csv"
+            #n_rows = len(data)
+            #start_index = 4
+            #columns_to_add = self.TimePeriod
+            #new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
+            #new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
             # Insert new columns into the DataFrame at the specified position
-            columns = data.columns.tolist()
-            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
-            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # columns = data.columns.tolist()
+            #updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            #result = pd.concat([data, new_data], axis=1)[updated_columns]
             # Save the updated DataFrame to a new CSV file
-            result.to_csv(output_file, index=False)
+            #result.to_csv(output_file, index=False)
+            # columns_df = pd.DataFrame([columns])
+            # columns_df.to_csv(output_file, index=False)
         else:
             raise ValueError("The objective nutrient for input network generation not set!")
 
@@ -1193,37 +1204,47 @@ class EPA:
         self.BMP_Selection()
 
         if self.Objective == 'P':
+            if os.path.exists("NetworkInfo.csv"):
+                os.remove("NetworkInfo.csv")
+            os.rename("SWAT/Outputs/SWAT_final_output_single_obj_optim_TP.csv", "NetworkInfo.csv")
             """ write code to change the format of network file"""
-            data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TP.csv",dtype=object)
-            output_file = "NetworkInfo.csv"
-            n_rows = len(data)
-            start_index = 4 + self.TimePeriod
-            columns_to_add = self.TimePeriod
+            # data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TP.csv",dtype=object)
+            # output_file = "NetworkInfo.csv"
+            #n_rows = len(data)
+            #start_index = 4 + self.TimePeriod
+            #columns_to_add = self.TimePeriod
 
-            new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
-            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            #new_columns = {f"N_{i}": 0 for i in range(columns_to_add)}
+            #new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
             # Insert new columns into the DataFrame at the specified position
-            columns = data.columns.tolist()
-            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
-            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # columns = data.columns.tolist()
+            #updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            #result = pd.concat([data, new_data], axis=1)[updated_columns]
             # Save the updated DataFrame to a new CSV file
-            result.to_csv(output_file, index=False)
+            #result.to_csv(output_file, index=False)
+            # columns_df = pd.DataFrame([columns])
+            # columns_df.to_csv(output_file, index=False)
 
         elif self.Objective == 'N':
+            if os.path.exists("NetworkInfo.csv"):
+                os.remove("NetworkInfo.csv")
+            os.rename("SWAT/Outputs/SWAT_final_output_single_obj_optim_TN.csv", "NetworkInfo.csv")
             """ write code to change the format of network file"""
-            data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TN.csv",dtype=object)
-            output_file = "NetworkInfo.csv"
-            n_rows = len(data)
-            start_index = 4
-            columns_to_add = self.TimePeriod
-            new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
-            new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
+            # data = pd.read_csv("SWAT/Outputs/SWAT_final_output_single_obj_optim_TN.csv",dtype=object)
+            # output_file = "NetworkInfo.csv"
+            #n_rows = len(data)
+            #start_index = 4
+            #columns_to_add = self.TimePeriod
+            #new_columns = {f"P_{i}": 0 for i in range(columns_to_add)}
+            #new_data = pd.DataFrame({col: [value] * n_rows for col, value in new_columns.items()})
             # Insert new columns into the DataFrame at the specified position
-            columns = data.columns.tolist()
-            updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
-            result = pd.concat([data, new_data], axis=1)[updated_columns]
+            # columns = data.columns.tolist()
+            #updated_columns = columns[:start_index] + list(new_data.columns) + columns[start_index:]
+            #result = pd.concat([data, new_data], axis=1)[updated_columns]
             # Save the updated DataFrame to a new CSV file
-            result.to_csv(output_file, index=False)
+            #result.to_csv(output_file, index=False)
+            # columns_df = pd.DataFrame([columns])
+            # columns_df.to_csv(output_file, index=False)
         else:
             raise ValueError("The objective nutrient for input network generation not set!")
 
