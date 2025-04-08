@@ -44,9 +44,9 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
         os.makedirs(Outputs_path)
 
 
-    data_dir = './WAM/Inputs/Reaches' #Directory where all the WAM's outputs, reach *.csv files, are stored
-    input_TP_filename = './WAM/Inputs/Watershed_Subbasin_LU_TP.xlsx'
-    input_TN_filename = './WAM/Inputs/Watershed_Subbasin_LU_TN.xlsx'
+    data_dir = 'WAM/Inputs/Reaches' #Directory where all the WAM's outputs, reach *.csv files, are stored
+    input_TP_filename = 'WAM/Inputs/Watershed_Subbasin_LU_TP.xlsx'
+    input_TN_filename = 'WAM/Inputs/Watershed_Subbasin_LU_TN.xlsx'
     subbasin_TP_input_file = os.path.join(working_path, input_TP_filename)
     subbasin_TN_input_file = os.path.join(working_path, input_TN_filename)
 
@@ -61,10 +61,10 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
     if not os.path.exists(os.path.join(working_path, 'WAM')):
         os.makedirs(os.path.join(working_path, 'WAM'))
 
-    out1_file = './WAM/Outputs/Watershed_Annual_Flow.csv'
+    out1_file = 'WAM/Outputs/Watershed_Annual_Flow.csv'
     out1 = os.path.join(working_path, out1_file)
 
-    out2_file = './WAM/Outputs/Watershed_Reaches_In_Out.csv'
+    out2_file = 'WAM/Outputs/Watershed_Reaches_In_Out.csv'
     out2 = os.path.join(working_path, out2_file)
 
     #Collect all reaches data
@@ -222,16 +222,16 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
 
     ##################Compute TP, TN Loads ######################################################################
 
-    out3_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_new.csv'
+    out3_TP_file = 'WAM/Outputs/Watershed_Base_Annual_TP_new.csv'
     out3_TP = os.path.join(working_path, out3_TP_file)
 
-    out3_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_new.csv'
+    out3_TN_file = 'WAM/Outputs/Watershed_Base_Annual_TN_new.csv'
     out3_TN = os.path.join(working_path, out3_TN_file)
 
-    out4_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_w_Split_new.csv'
+    out4_TP_file = 'WAM/Outputs/Watershed_Base_Annual_TP_w_Split_new.csv'
     out4_TP = os.path.join(working_path, out4_TP_file)
 
-    out4_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_w_Split_new.csv'
+    out4_TN_file = 'WAM/Outputs/Watershed_Base_Annual_TN_w_Split_new.csv'
     out4_TN = os.path.join(working_path, out4_TN_file)
 
     #Read data of all reaches
@@ -309,7 +309,7 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
     # out5_TN_file = './WAM/Outputs/Watershed_single_obj_opti_TN.csv'
     # out5_TN = os.path.join(Working_path, out5_TN_file)
 
-    out6_file = './WAM/Outputs/Watershed_multiple_obj_opti.csv'
+    out6_file = 'WAM/Outputs/Watershed_multiple_obj_opti.csv'
     out6 = os.path.join(working_path, out6_file)
 
 
@@ -565,16 +565,16 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
     merged_df_multi_obj_optim.rename(columns={'percent_TN_tons_by_REACH': 'TN_percent'}, inplace=True)
 
     # # Export the final merged DataFrame to a CSV file
-    final_out_file = './WAM/Outputs/WAM_final_output_multiple_obj_optim.csv'
-    merged_df_multi_obj_optim.to_csv(final_out_file, index=False, header=True)
+    final_out_file = 'WAM/Outputs/WAM_final_output_multiple_obj_optim.csv'
+    merged_df_multi_obj_optim.to_csv(os.path.join(working_path, final_out_file), index=False, header=True)
 
     # extract unique values of merged_df_single_obj_optim_TN['LUID']
     unique_LUID = merged_df_multi_obj_optim['LUID'].unique()
     unique_LUID = np.array(unique_LUID, dtype=int)
     unique_LUID = pd.DataFrame(unique_LUID, columns=['LUID'])
 
-    final_out_file = './WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
-    unique_LUID.to_csv(final_out_file, index=False, header=True)
+    final_out_file = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
+    unique_LUID.to_csv(os.path.join(working_path, final_out_file), index=False, header=True)
 
     # print(f"Merged data has been saved to {final_out_file}")
 
