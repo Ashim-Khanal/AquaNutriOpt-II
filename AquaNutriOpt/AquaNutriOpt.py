@@ -35,7 +35,7 @@ class EPA:
         self.softwareCode = 0  # WAM or SWAT selection
         self.CorrectionCode = 1 #
         self.BigBound = 99999999999
-        self.wamTimePeriods = None  # Time periods for WAM, None or string such as '2018, 2020'
+        self.networkAutomationTimePeriods = None  # Time periods for network automation scripts, None or string such as '2018, 2020'
     # %%
     def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
         self.timeLimit = timeLimit
@@ -1154,7 +1154,7 @@ class EPA:
     def WAM_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 0
         self.TimePeriod = TimePeriod
-        wam_network_automation_mo(os.getcwd())
+        wam_network_automation_mo(os.getcwd(), self.networkAutomationTimePeriods)
         self.BMP_Selection_MO()
         data = "WAM/Outputs/WAM_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1168,7 +1168,7 @@ class EPA:
     def SWAT_InputGenerator_MO(self, TimePeriod = 1):
         self.softwareCode = 1
         self.TimePeriod = TimePeriod
-        swat_network_automation_mo(os.getcwd())
+        swat_network_automation_mo(os.getcwd(), self.networkAutomationTimePeriods)
         self.BMP_Selection_MO()
         data = "SWAT/Outputs/SWAT_final_output_multiple_obj_optim.csv"
         output_file = "NetworkInfo.csv"
@@ -1259,17 +1259,17 @@ class EPA:
     #### Osama and Long's Script
     def run_scriptTP(self):
         if self.softwareCode == 0:
-            WAM_Network_Automation_TP(os.getcwd(), self.wamTimePeriods)
+            WAM_Network_Automation_TP(os.getcwd(), self.networkAutomationTimePeriods)
         elif self.softwareCode == 1:
-            swat_network_automation_tp(os.getcwd())
+            swat_network_automation_tp(os.getcwd(), self.networkAutomationTimePeriods)
             
 
 
     def run_scriptTN(self):
         if self.softwareCode == 0:
-            WAM_Network_Automation_TN(os.getcwd(), self.wamTimePeriods)
+            WAM_Network_Automation_TN(os.getcwd(), self.networkAutomationTimePeriods)
         elif self.softwareCode == 1:
-            swat_network_automation_tn(os.getcwd())
+            swat_network_automation_tn(os.getcwd(), self.networkAutomationTimePeriods)
     ######
     def run_GenInputSO(self):
         gen_input_so(self.TimePeriod)
