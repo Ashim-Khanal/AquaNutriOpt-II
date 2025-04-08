@@ -14,11 +14,12 @@ import sys
 from AquaNutriOpt.utils import *
 
 
-def wam_network_automation_mo(working_path: str):
+def wam_network_automation_mo(working_path: str, time_periods: str):
     """Performs network automation for multi-objective optimization on WAM inputs.
     
     Args:
         working_path (str): The path to the working directory where WAM inputs and outputs are stored.
+        time_periods (str): Time periods to process (e.g., "2018", "2018, 2020").
     """
     
     # Example usage
@@ -509,7 +510,21 @@ def wam_network_automation_mo(working_path: str):
     # merge with Final_Network_TP_df
     hru_df_multiple_obj_opti_TP_TN['REACH'] = hru_df_multiple_obj_opti_TP_TN['REACH'].astype('int64')
 
-    Years = [int(i) for i in Years]
+    if time_periods is not None:
+        Years = []
+        for i in range(Fst_Yr, Lst_Yr+1):
+            if str(i) in time_periods:
+                Years.append(int(i))
+        # if the Years is empty, then assign the range of years to Years
+        if len(Years) == 0:
+            # inform the time_periods is not in the range of years
+            print(f"Warning: The time period '{time_periods}' is not in the input data!")
+            # assign the range of years to Years
+            Years = [int(i) for i in range(Fst_Yr, Lst_Yr+1)]
+    else:
+        Years = [int(i) for i in Years]
+    
+            
     final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH']
     merged_df_multi_obj_optim = merge_ratio_TP_TN_percentage_data(  Final_Network_TP_df, 
                                                                     hru_df_multiple_obj_opti_TP_TN, 
@@ -565,5 +580,17 @@ def wam_network_automation_mo(working_path: str):
 
 
 if __name__ == "__main__":
-    working_path = os.getcwd()
-    wam_network_automation_mo(working_path)
+    #srun --nodes=1 --partition=general --pty /bin/bash
+    # test with small inputs.
+    if len(sys.argv) != 2:
+        print("Usage: python WAM_Network_Automation_MO.py <time_periods> <working_path>")
+        print("Example: python WAM_Network_Automation_MO.py '2018, 2020' /path/to/working_directory")
+        time_periods = None
+        working_path = os.getcwd()
+        wam_network_automation_mo(working_path, time_periods)
+        # sys.exit(1)
+
+    else:
+        time_periods = sys.argv[1]
+        working_path = sys.argv[2]
+        wam_network_automation_mo(working_path, time_periods)
