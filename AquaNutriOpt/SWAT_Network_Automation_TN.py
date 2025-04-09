@@ -8,11 +8,12 @@ import csv
 import sys
 from AquaNutriOpt.SWAT_utils import *
 
-def swat_network_automation_tn(working_path: str):
+def swat_network_automation_tn(working_path: str, time_periods: str):
     """Performs network automation for single-objective optimization on SWAT inputs for minimizing nitrogen.
     
     Args:
         working_path (str): The path to the working directory where WAM inputs and outputs are stored.
+        time_periods (str): Time periods to process (e.g., "2018", "2018, 2020").
     """
     ########### Notes ################
     # 1. Need to check LUID column of the final output for any blank value. If yes, need to update the input file. (LUID.xlsx.)
@@ -380,12 +381,34 @@ def swat_network_automation_tn(working_path: str):
                                 on = 'REACH')
 
     ##############################################################################
-    Years = [int(i) for i in Years]
+    if time_periods is not None:
+        Years = []
+        for i in range(Fst_Yr, Lst_Yr+1):
+            if str(i) in time_periods:
+                Years.append(int(i))
+        # if the Years is empty, then assign the range of years to Years
+        if len(Years) == 0:
+            # inform the time_periods is not in the range of years
+            print(f"Warning: The time period '{time_periods}' is not in the input data!")
+            # assign the range of years to Years
+            Years = [int(i) for i in range(Fst_Yr, Lst_Yr+1)]
+    else:
+        Years = [int(i) for i in Years]
     # print(type(Years))
     final_columns_format_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
     merged_df_single_obj_optim_TN = merge_ratio_TP_TN_percentage_data(Final_Network_TN_df, 
                                                                     hru_df_single_obj_opti_TN,
                                                                     final_columns_format_TN)
+
+    for i in Years:
+        # if str(i) or i is in the columns of merged_df_single_obj_optim_TP, then
+        if i in merged_df_single_obj_optim_TN.columns:
+            # TP: create a copy of the found column and name the new column by adding '_x' to the found column. 
+            merged_df_single_obj_optim_TN[str(i) + '_x'] = merged_df_single_obj_optim_TN[i]
+            # replace every value in the new column with zeros.
+            merged_df_single_obj_optim_TN[str(i) + '_x'] = 0
+            # rename the original column by adding with the element + '_y'
+            merged_df_single_obj_optim_TN.rename(columns={i: str(i) + '_y'}, inplace=True)
 
     ###################################################################################
 
@@ -409,8 +432,10 @@ def swat_network_automation_tn(working_path: str):
     #         merged_df_single_obj_optim_TN['landuse_id'].iloc[i] = 9999
     #     else:
     #         pass
+    Years_x = [str(i) + '_x' for i in Years]
+    Years_y = [str(i) + '_y' for i in Years]
 
-    final_columns_format_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['WAM_LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
+    final_columns_format_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years_x + Years_y + ['WAM_LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
     merged_df_single_obj_optim_TN = merged_df_single_obj_optim_TN[final_columns_format_TN]
 
     #rename the 'landuse_id' column to 'LUID'
@@ -419,6 +444,9 @@ def swat_network_automation_tn(working_path: str):
     #if type of LUID is not integer, LUID is integer
     if merged_df_single_obj_optim_TN['LUID'].dtype != int:
         merged_df_single_obj_optim_TN['LUID'] = merged_df_single_obj_optim_TN['LUID'].astype(int)
+
+    # if merged_df_single_obj_optim_TN['Outgoing'].dtype != int:
+    #     merged_df_single_obj_optim_TN['Outgoing'] = merged_df_single_obj_optim_TN['Outgoing'].astype(int)
 
 
     final_out_file_TN = 'SWAT_final_output_single_obj_optim_TN.csv'
@@ -438,6 +466,18 @@ def swat_network_automation_tn(working_path: str):
     unique_LUID_TN.to_csv(final_out_file_TN, index=False, header=True)
 
 
-if __name__ == '__main__':
-    working_path = os.getcwd()
-    swat_network_automation_tn(working_path)
+if __name__ == "__main__":
+    #srun --nodes=1 --partition=general --pty /bin/bash
+    # test with small inputs.
+    if len(sys.argv) != 2:
+        print("Usage: python SWAT_Network_Automation_TN.py <time_periods> <working_path>")
+        print("Example: python SWAT_Network_Automation_TN.py '2018, 2020' /path/to/working_directory")
+        time_periods = None
+        working_path = os.getcwd()
+        swat_network_automation_tn(working_path, time_periods)
+        # sys.exit(1)
+
+    else:
+        time_periods = sys.argv[1]
+        working_path = sys.argv[2]
+        swat_network_automation_tn(working_path, time_periods)

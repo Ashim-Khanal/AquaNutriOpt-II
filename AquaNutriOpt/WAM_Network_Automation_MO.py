@@ -14,11 +14,12 @@ import sys
 from AquaNutriOpt.utils import *
 
 
-def wam_network_automation_mo(working_path: str):
+def wam_network_automation_mo(working_path: str, time_periods: str):
     """Performs network automation for multi-objective optimization on WAM inputs.
     
     Args:
         working_path (str): The path to the working directory where WAM inputs and outputs are stored.
+        time_periods (str): Time periods to process (e.g., "2018", "2018, 2020").
     """
     
     # Example usage
@@ -43,9 +44,9 @@ def wam_network_automation_mo(working_path: str):
         os.makedirs(Outputs_path)
 
 
-    data_dir = './WAM/Inputs/Reaches' #Directory where all the WAM's outputs, reach *.csv files, are stored
-    input_TP_filename = './WAM/Inputs/Watershed_Subbasin_LU_TP.xlsx'
-    input_TN_filename = './WAM/Inputs/Watershed_Subbasin_LU_TN.xlsx'
+    data_dir = 'WAM/Inputs/Reaches' #Directory where all the WAM's outputs, reach *.csv files, are stored
+    input_TP_filename = 'WAM/Inputs/Watershed_Subbasin_LU_TP.xlsx'
+    input_TN_filename = 'WAM/Inputs/Watershed_Subbasin_LU_TN.xlsx'
     subbasin_TP_input_file = os.path.join(working_path, input_TP_filename)
     subbasin_TN_input_file = os.path.join(working_path, input_TN_filename)
 
@@ -60,10 +61,10 @@ def wam_network_automation_mo(working_path: str):
     if not os.path.exists(os.path.join(working_path, 'WAM')):
         os.makedirs(os.path.join(working_path, 'WAM'))
 
-    out1_file = './WAM/Outputs/Watershed_Annual_Flow.csv'
+    out1_file = 'WAM/Outputs/Watershed_Annual_Flow.csv'
     out1 = os.path.join(working_path, out1_file)
 
-    out2_file = './WAM/Outputs/Watershed_Reaches_In_Out.csv'
+    out2_file = 'WAM/Outputs/Watershed_Reaches_In_Out.csv'
     out2 = os.path.join(working_path, out2_file)
 
     #Collect all reaches data
@@ -221,16 +222,16 @@ def wam_network_automation_mo(working_path: str):
 
     ##################Compute TP, TN Loads ######################################################################
 
-    out3_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_new.csv'
+    out3_TP_file = 'WAM/Outputs/Watershed_Base_Annual_TP_new.csv'
     out3_TP = os.path.join(working_path, out3_TP_file)
 
-    out3_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_new.csv'
+    out3_TN_file = 'WAM/Outputs/Watershed_Base_Annual_TN_new.csv'
     out3_TN = os.path.join(working_path, out3_TN_file)
 
-    out4_TP_file = './WAM/Outputs/Watershed_Base_Annual_TP_w_Split_new.csv'
+    out4_TP_file = 'WAM/Outputs/Watershed_Base_Annual_TP_w_Split_new.csv'
     out4_TP = os.path.join(working_path, out4_TP_file)
 
-    out4_TN_file = './WAM/Outputs/Watershed_Base_Annual_TN_w_Split_new.csv'
+    out4_TN_file = 'WAM/Outputs/Watershed_Base_Annual_TN_w_Split_new.csv'
     out4_TN = os.path.join(working_path, out4_TN_file)
 
     #Read data of all reaches
@@ -308,7 +309,7 @@ def wam_network_automation_mo(working_path: str):
     # out5_TN_file = './WAM/Outputs/Watershed_single_obj_opti_TN.csv'
     # out5_TN = os.path.join(Working_path, out5_TN_file)
 
-    out6_file = './WAM/Outputs/Watershed_multiple_obj_opti.csv'
+    out6_file = 'WAM/Outputs/Watershed_multiple_obj_opti.csv'
     out6 = os.path.join(working_path, out6_file)
 
 
@@ -509,7 +510,21 @@ def wam_network_automation_mo(working_path: str):
     # merge with Final_Network_TP_df
     hru_df_multiple_obj_opti_TP_TN['REACH'] = hru_df_multiple_obj_opti_TP_TN['REACH'].astype('int64')
 
-    Years = [int(i) for i in Years]
+    if time_periods is not None:
+        Years = []
+        for i in range(Fst_Yr, Lst_Yr+1):
+            if str(i) in time_periods:
+                Years.append(int(i))
+        # if the Years is empty, then assign the range of years to Years
+        if len(Years) == 0:
+            # inform the time_periods is not in the range of years
+            print(f"Warning: The time period '{time_periods}' is not in the input data!")
+            # assign the range of years to Years
+            Years = [int(i) for i in range(Fst_Yr, Lst_Yr+1)]
+    else:
+        Years = [int(i) for i in Years]
+    
+            
     final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH']
     merged_df_multi_obj_optim = merge_ratio_TP_TN_percentage_data(  Final_Network_TP_df, 
                                                                     hru_df_multiple_obj_opti_TP_TN, 
@@ -550,20 +565,32 @@ def wam_network_automation_mo(working_path: str):
     merged_df_multi_obj_optim.rename(columns={'percent_TN_tons_by_REACH': 'TN_percent'}, inplace=True)
 
     # # Export the final merged DataFrame to a CSV file
-    final_out_file = './WAM/Outputs/WAM_final_output_multiple_obj_optim.csv'
-    merged_df_multi_obj_optim.to_csv(final_out_file, index=False, header=True)
+    final_out_file = 'WAM/Outputs/WAM_final_output_multiple_obj_optim.csv'
+    merged_df_multi_obj_optim.to_csv(os.path.join(working_path, final_out_file), index=False, header=True)
 
     # extract unique values of merged_df_single_obj_optim_TN['LUID']
     unique_LUID = merged_df_multi_obj_optim['LUID'].unique()
     unique_LUID = np.array(unique_LUID, dtype=int)
     unique_LUID = pd.DataFrame(unique_LUID, columns=['LUID'])
 
-    final_out_file = './WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
-    unique_LUID.to_csv(final_out_file, index=False, header=True)
+    final_out_file = 'WAM/Outputs/WAM_unique_LUID_multiple_obj_optim.csv'
+    unique_LUID.to_csv(os.path.join(working_path, final_out_file), index=False, header=True)
 
     # print(f"Merged data has been saved to {final_out_file}")
 
 
 if __name__ == "__main__":
-    working_path = os.getcwd()
-    wam_network_automation_mo(working_path)
+    #srun --nodes=1 --partition=general --pty /bin/bash
+    # test with small inputs.
+    if len(sys.argv) != 2:
+        print("Usage: python WAM_Network_Automation_MO.py <time_periods> <working_path>")
+        print("Example: python WAM_Network_Automation_MO.py '2018, 2020' /path/to/working_directory")
+        time_periods = None
+        working_path = os.getcwd()
+        wam_network_automation_mo(working_path, time_periods)
+        # sys.exit(1)
+
+    else:
+        time_periods = sys.argv[1]
+        working_path = sys.argv[2]
+        wam_network_automation_mo(working_path, time_periods)
