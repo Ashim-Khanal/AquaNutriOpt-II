@@ -17,14 +17,17 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import os
 
-def wam_opt_visualization():
+def wam_opt_visualization(working_path: str):
     """
     Visualizes AquaNutriOpt outputs into a map of the land use with optimized BMPs for each subbasin
+    
+    Args:
+        working_path (str): The path to the working directory where the WAM_Opt_Visualization folder will be created.
+        
+    Returns:
+        None: The function creates a folder structure and visualizes the data, saving the output as an image.
     """
-    Working_path = os.getcwd()
-    os.chdir(Working_path)
-
-    Wam_path = os.path.join(Working_path, 'WAM_Opt_Visualization')
+    Wam_path = os.path.join(working_path, 'WAM_Opt_Visualization')
     Inputs_path = os.path.join(Wam_path, 'Inputs')
     Outputs_path = os.path.join(Wam_path, 'Outputs')
 
@@ -250,4 +253,5 @@ def wam_opt_visualization():
 
 
 if __name__ == "__main__":
-    wam_opt_visualization()
+    working_path = os.getcwd()
+    wam_opt_visualization(working_path)
