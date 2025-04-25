@@ -1,8 +1,10 @@
 import numpy as np
 import pulp
 import os
+import zipfile as zp
 import sys
 import time
+import csv
 #import math
 #from utils import *
 import pandas as pd
@@ -35,6 +37,7 @@ class EPA:
         self.softwareCode = 0  # WAM or SWAT selection
         self.CorrectionCode = 1 #
         self.BigBound = 99999999999
+        self.setting = 'Filtered'
         self.networkAutomationTimePeriods = None  # Time periods for network automation scripts, None or string such as '2018, 2020'
     # %%
     def Set_TimeLimit(self, timeLimit):   #set timelimit in seconds
@@ -144,21 +147,26 @@ class EPA:
             self.TargetLoad = MODEL.objective.value()
 
         file = open('Res_BMPs_SO_{}.txt'.format(self.C), 'w+')
+        file.write('Node, BMPs\n')
         Counter = 0
         for i in self.NN:
             for t in self.TTi[i]:
                 try:
                     if Xit[(i, t)].value() > .5:
-                        file.write(i)
+                        ind = i.find('_')
+                        if ind > 0:
+                            file.write(i[0:ind])
+                        else:
+                            file.write(i)
                         file.write(',')
-                        file.write(t)
+                        ind = t.find('_')
+                        file.write(t[3:ind])
                         file.write('\n')
                 except:
                     Counter = Counter + 1
         file.close()
 
         file = open('Res_Flow_SO_{}.txt'.format(self.C), 'w+')
-        #
         for j in self.NN:
             for i in self.NNn_i[j]:
                 try:
@@ -167,7 +175,6 @@ class EPA:
                     file.write('{}_{} {}\n'.format(i, j, str(Fijm[(i, j, 'P')].value())))
                 except:
                     pass
-
         file.close()
 
         print('******************************************************************************')
@@ -294,21 +301,26 @@ class EPA:
 
         if self.Writefiles:
             file = open('Res_BMPs_SOTI_{}.txt'.format(self.C), 'w+')
+            file.write('Node, BMPs\n')
             Counter = 0
             for i in self.NN:
                 for t in self.TTi[i]:
                     try:
                         if Xit[(i, t)].value() > .5:
-                            file.write(i)
+                            ind = i.find('_')
+                            if ind > 0:
+                                file.write(i[0:ind])
+                            else:
+                                file.write(i)
                             file.write(',')
-                            file.write(t)
+                            ind = t.find('_')
+                            file.write(t[3:ind])
                             file.write('\n')
                     except:
                         Counter = Counter + 1
             file.close()
 
             file = open('Res_Flow_SOTI_{}.txt'.format(self.C), 'w+')
-            #
             for j in self.NN:
                 for i in self.NNn_i[j]:
                     try:
@@ -644,7 +656,7 @@ class EPA:
         file_name = 'NonDominatedPoints.csv'
         file_path = os.path.join(self.MOOPATH, file_name)
         file2 = open(file_path, 'w+')
-        file2.write('Budget, PhosphorousLoad, NitrogenLoad, Bounds\n')
+        file2.write('Budget, PhosphorousLoad, NitrogenLoad, FileReference\n')
         non_dominated_points = {}
         # non_dominated = []
         for i in range(len(allpoints)):
@@ -662,7 +674,7 @@ class EPA:
         #for i in range(len(non_dominated_points)):
         for point, bound in self.non_dominated_points.items():
             #self.non_dominated_points.append(point)
-            file2.write(','.join(map(str, point)) + ',' + str(bound) + '\n')
+            file2.write(','.join(map(str, point)) + ',' + 'BMPs_'+str(point[0])+'bound_'+str(bound) + '\n')
 
         file2.close()
         # return non_dominated
@@ -789,39 +801,39 @@ class EPA:
         file_name = 'Filtered_NonDominatedPoints.csv'
         file_path = os.path.join(self.MOOPATH, file_name)
         new_file = open(file_path, 'w+')
-        new_file.write('Budget, PhosphorousLoad, NitrogenLoad, Bounds\n')
+        new_file.write('Budget, PhosphorousLoad, NitrogenLoad, FileReference\n')
 
         for items in filtered_nondominated:
             new_file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
 
         #non_dominated_points = find_non_dominated(allpoints, bounds)
     # %%
-    def Get_Corrected_Loads_MO(self, setting = 'Normal'):  # information of points (P, N) loads will be corrected with the aid of base loading zero budget loads.
-
+    def Get_Corrected_Loads_MO(self, setting = 'Filtered'):  # information of points (P, N) loads will be corrected with the aid of base loading zero budget loads.
+        self.setting = setting
         correctedLoad = [0 for i in range(len(self.MM))]
         self.CorrectedPointsMO = []
-        if setting == 'Normal':
+        if self.setting == 'Normal':
             #for point, bound in non_dominated_points.items():
             for point, bound in self.non_dominated_points.items():
                 correctedLoad[0] = self.baseLoad_MO[0] * (1 - self.Correction_Factor_P) + point[1] * self.Correction_Factor_P
                 correctedLoad[1] = self.baseLoad_MO[1] * (1 - self.Correction_Factor_N) + point[2] * self.Correction_Factor_N
-                self.CorrectedPointsMO.append((point[0], correctedLoad[0], correctedLoad[1], bound))
+                self.CorrectedPointsMO.append((point[0], round(correctedLoad[0],3), round(correctedLoad[1],3), 'BMPs_'+str(point[0])+'bound_'+ bound))
 
             with open("MOOResults/CorrectedNDPs.csv", "w") as file:
-                file.write('Use BoundReference column to determine the corrected points with optimization points from NonDominatedPoints file \n')
-                file.write('Budget, P_Corrected, N_Corrected, BoundReference\n')
+                #file.write('Use BoundReference column to determine the corrected points with optimization points from NonDominatedPoints file \n')
+                file.write('Budget, P_Corrected, N_Corrected, FileReference\n')
                 for items in self.CorrectedPointsMO:
                     file.write(','.join(map(str, items)) + '\n')
                     #file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
 
-        elif setting == 'Filtered' or 'filtered':
+        elif self.setting == 'Filtered':
             for items in self.filtered_nondominated:
                 correctedLoad[0] = self.baseLoad_MO[0] * (1 - self.Correction_Factor_P) + items[1] * self.Correction_Factor_P
                 correctedLoad[1] = self.baseLoad_MO[1] * (1 - self.Correction_Factor_N) + items[2] * self.Correction_Factor_N
-                self.CorrectedPointsMO.append((items[0], correctedLoad[0], correctedLoad[1], items[3]))
+                self.CorrectedPointsMO.append((items[0], round(correctedLoad[0],3), round(correctedLoad[1],3), items[3]))
             with open("MOOResults/Corrected_FilteredNDPs.csv", "w") as file:
-                file.write('Use BoundReference column to determine the corrected points with postprocessed points from FilteredNonDominatedPoints file \n')
-                file.write('Budget, P_Corrected, N_Corrected, BoundReference\n')
+                #file.write('Use BoundReference column to determine the corrected points with postprocessed points from FilteredNonDominatedPoints file \n')
+                file.write('Budget, P_Corrected, N_Corrected, FileReference\n')
                 for items in self.CorrectedPointsMO:
                     file.write(str(items[0]) + ',' + str(items[1]) + ',' + str(items[2]) + ',' + str(items[3]) + '\n')
 
@@ -1421,6 +1433,53 @@ class EPA:
             file = open(save_dir + '/' + 'correctedLoad.txt', 'w+')
             file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.correctedLoad))
             file.close()
+
+    def GetEssential_MOoutputs(self):
+        #print("current working dir = ", os.getcwd())
+        files_to_zip = []
+
+        if self.setting == 'Filtered':
+            csv_path = 'MOOResults/Corrected_FilteredNDPs.csv'
+            archiveCode = 0
+        elif self.setting == 'Normal':
+            csv_path = 'MOOResults/CorrectedNDPs.csv'
+            archiveCode = 1
+        else:
+            print("csv path required for zipping not found")
+            return
+        with open(csv_path, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                file_name = row[' FileReference'].strip()
+                full_path = os.path.join('MOOResults', file_name)
+                #if os.path.isfile(full_path):
+                    #files_to_zip.append(full_path)
+                files_to_zip.append(str(full_path)+'.txt')
+                #else:
+                    #print(f"** File not found ** : {full_path+'.txt'} - Skipping.")
+        #print("files to zip ", files_to_zip)
+
+        with zp.ZipFile('MultiObjResultsEssential.zip','w', compression=zp.ZIP_DEFLATED) as zf:
+            try:
+                zf.write('MOOResults/allPointsWithBounds.csv')
+            except FileNotFoundError:
+                print("allPointsWithBounds.csv not found, skipping")
+
+            for file_path in files_to_zip:
+                try:
+                    zf.write(file_path)
+                except FileNotFoundError:
+                    print(f"File not found during zipping: {file_path} - skipping")
+            try:
+                if archiveCode == 0:
+                    zf.write('MOOResults/Filtered_NonDominatedPoints.csv')
+                    zf.write('MOOResults/Corrected_FilteredNDPs.csv')
+                elif archiveCode == 1:
+                    zf.write('MOOResults/NonDominatedPoints.csv')
+                    zf.write('MOOResults/CorrectedNDPs.csv')
+            except:
+                print("Non Dominated Points file not found.")
+
 
 # %%
 def IsSubset(X, Y):
