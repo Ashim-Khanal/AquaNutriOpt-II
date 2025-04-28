@@ -17,15 +17,19 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import os
 
-def wam_opt_visualization(working_path: str):
+def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, lookup_table_file: str, land_use_subbasin_file: str, out_file_basename: str):
     """
     Visualizes AquaNutriOpt outputs into a map of the land use with optimized BMPs for each subbasin
     
     Args:
         working_path (str): The path to the working directory where the WAM_Opt_Visualization folder will be created.
+        aquanutriopt_output_file (str): The name of the AquaNutriOpt output file.
+        lookup_table_file (str): The name of the LOOKUP table file that maps BMPs to their corresponding LU_Base and LU_Code.
+        land_use_subbasin_file (str): The name of the Land Use Subbasin shapefile.
+        out_file_basename (str): The base name for the output files (image and geojson) (The name of the output file without the extension).
         
     Returns:
-        None: The function creates a folder structure and visualizes the data, saving the output as an image.
+        None: The function creates a folder structure and visualizes the data, saving the output as an image and geojson file.
     """
     Wam_path = os.path.join(working_path, 'WAM_Opt_Visualization')
     Inputs_path = os.path.join(Wam_path, 'Inputs')
@@ -49,13 +53,13 @@ def wam_opt_visualization(working_path: str):
     # Read the Aquanutiopt output file
     # The Aquanutiopt output file contains the optimized BMPs for each subbasin
     # 1,500,000 means a budget constrain and t1 can mean a unit of time.
-    df_path = os.path.join(Inputs_path, 'BMPs_1500000bound_N_4978.348.txt')
+    df_path = os.path.join(Inputs_path, aquanutriopt_output_file)
     df = pd.read_csv(df_path, 
                     sep=',')
 
     # Read the master LOOKUP table
     # The LOOKUP table is designed to map BMPs to their corresponding LU_Base and LU_Code
-    look_up_tab_path = os.path.join(Inputs_path, 'LOOKUP_Table.csv')
+    look_up_tab_path = os.path.join(Inputs_path, lookup_table_file)
     LOOKUP_Table = pd.read_csv(look_up_tab_path)
     LU_Base = df[' BMPs'].apply(lambda x: LOOKUP_Table[(LOOKUP_Table['BMP_Type'] == x)]['LU_Base'].values[0])
     LU_BMP = df[' BMPs'].apply(lambda x: LOOKUP_Table[(LOOKUP_Table['BMP_Type'] == x)]['LU_Code'].values[0])
@@ -79,7 +83,7 @@ def wam_opt_visualization(working_path: str):
 
     #######################################################################################
     WAM_Inputs_path = os.path.join(Inputs_path, 'From_WAM_Model_Generation_Script')
-    vector_data_path = os.path.join(WAM_Inputs_path, 'Land_Subbasin_Intersection.shp')
+    vector_data_path = os.path.join(WAM_Inputs_path, land_use_subbasin_file)
 
     # Read the shapefile
     Existing_LU = gpd.read_file(vector_data_path)
@@ -140,64 +144,6 @@ def wam_opt_visualization(working_path: str):
     # Existing_LU.to_file(Existing_LU_path, 
     #               driver="ESRI Shapefile")
 
-    def visualize_shapefile(gdf, 
-                            category_field, 
-                            category_color_rule, 
-                            output_path=None):
-        """
-        Visualizes a shapefile with categories mapped to specific colors.
-
-        Parameters:
-            vector_file_path (str): Path to the shapefile.
-            category_field (str): The field used for categorization.
-            category_color_rule (dict): A dictionary mapping category values to colors.
-            output_path (str): Path to save the output plot. If None, the plot is not saved.
-
-        Returns:
-            None
-        """
-        # Extract unique categories
-        unique_categories = gdf[category_field].unique()
-        # print("Unique categories:", unique_categories)
-
-        # Create a color map based on the data
-        color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
-        # print("Color map:", color_map)
-
-        # Plot the shapefile
-        fig, ax = plt.subplots(figsize=(10, 10))
-        # # add legend into the plot to explain its colors.
-        # for category, color in color_map.items():
-        #     gdf[gdf[category_field] == category].plot(ax=ax, 
-        #                                               color=color, 
-        #                                               label=category, 
-        #                                               edgecolor='black')
-        gdf.plot(column=category_field, 
-                ax=ax, 
-                color=gdf[category_field].map(color_map), 
-                legend=True)
-        
-        # add legend into the plot to explain its colors.
-        handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
-                                markerfacecolor=color, markersize=10) for category, color in color_map.items()]
-        ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1, 1), title=category_field)
-        # Set title and labels
-        ##############
-        ax.set_title('Land Use Categories')
-        ax.set_xlabel('Longitude')
-        ax.set_ylabel('Latitude')
-
-        # Save the figure if output_path is provided
-        if output_path:
-            fig.savefig(output_path, dpi=300, bbox_inches='tight')
-            print(f"Figure saved to {output_path}")
-
-        # Show the plot
-        # plt.show()
-
-        # Close the figure
-        plt.close(fig)
-
     category_field = "Opt_BMP_Name"
 
     # Define the color mapping for each category
@@ -242,7 +188,8 @@ def wam_opt_visualization(working_path: str):
         "No BMP": '#FFFFFF',  # White
         }
 
-    output_path = os.path.join(Outputs_path, 'LandUse_Categories.png')
+    output_path = os.path.join(Outputs_path, out_file_basename + '.png')
+    geojson_output_path = os.path.join(Outputs_path, out_file_basename + '.geojson')
 
     # Call the function to visualize the Existing_LU shapefile for the category field. 
     # Then, save the figure to the output path.
@@ -250,6 +197,135 @@ def wam_opt_visualization(working_path: str):
                         category_field, 
                         master_category_color_rule,  
                         output_path)
+
+    # Call the function to visualize the Existing_LU shapefile for the category field and save it as a GeoJSON file.
+    visualize_shapefile_to_geojson(Existing_LU, category_field, master_category_color_rule, geojson_output_path)
+
+
+def visualize_shapefile_to_geojson(gdf, category_field, category_color_rule, output_path=None):
+    """
+    Visualizes a shapefile with categories mapped to specific colors and saves it as a GeoJSON file.
+    
+    Args:
+        gdf (GeoDataFrame): The GeoDataFrame containing the shapefile data.
+        category_field (str): The field used for categorization.
+        category_color_rule (dict): A dictionary mapping category values to colors.
+        output_path (str): Path to save the output GeoJSON file. If None, the file is not saved.
+        
+    Returns:
+        None
+    """
+    # Extract unique categories
+    unique_categories = gdf[category_field].unique()
+
+    # Create a color map based on the data
+    color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
+    
+    # Add a 'category' field to the GeoDataFrame
+    gdf['category'] = gdf[category_field]
+
+    # Add a 'color' field to the GeoDataFrame based on the category_color_rule
+    gdf['color'] = gdf[category_field].map(color_map).fillna('#FFFFFF')
+    
+    gdf = gdf[gdf['category'] != 'No BMP']
+    gdf = gdf[~gdf['category'].isna()]
+    
+    # Save the GeoDataFrame as a GeoJSON file
+    gdf.to_crs('EPSG:4326').to_file(output_path, driver='GeoJSON')
+
+def visualize_shapefile(gdf, 
+                        category_field, 
+                        category_color_rule, 
+                        output_path=None):
+    """
+    Visualizes a shapefile with categories mapped to specific colors.
+
+    Parameters:
+        vector_file_path (str): Path to the shapefile.
+        category_field (str): The field used for categorization.
+        category_color_rule (dict): A dictionary mapping category values to colors.
+        output_path (str): Path to save the output plot. If None, the plot is not saved.
+
+    Returns:
+        None
+    """
+    # Extract unique categories
+    unique_categories = gdf[category_field].unique()
+    # print("Unique categories:", unique_categories)
+
+    # Create a color map based on the data
+    color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
+    # print("Color map:", color_map)
+
+    # Plot the shapefile
+    fig, ax = plt.subplots(figsize=(10, 10))
+    # # add legend into the plot to explain its colors.
+    # for category, color in color_map.items():
+    #     gdf[gdf[category_field] == category].plot(ax=ax, 
+    #                                               color=color, 
+    #                                               label=category, 
+    #                                               edgecolor='black')
+    gdf.plot(column=category_field, 
+            ax=ax, 
+            color=gdf[category_field].map(color_map), 
+            legend=True)
+    
+    # add legend into the plot to explain its colors.
+    handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
+                            markerfacecolor=color, markersize=10) for category, color in color_map.items()]
+    ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1, 1), title=category_field)
+    # Set title and labels
+    ##############
+    ax.set_title('Land Use Categories')
+    ax.set_xlabel('Longitude')
+    ax.set_ylabel('Latitude')
+
+    # Save the figure if output_path is provided
+    if output_path:
+        # Save the figure as a PNG file
+        fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"Figure saved to {output_path}")
+        
+        # Save the legend as a separate image
+        legend_path = output_path.replace('.png', '_legend.png')
+        save_legend_as_image(color_map, legend_path)
+
+    # Show the plot
+    # plt.show()
+
+    # Close the figure
+    plt.close(fig)
+
+def save_legend_as_image(color_map, output_path):
+    """
+    Saves a legend as a standalone image.
+
+    Args:
+        color_map (dict): A dictionary mapping category labels to colors.
+        output_path (str): Path to save the legend image.
+
+    Returns:
+        None
+    """
+    # Create legend handles and labels from the color map
+    handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
+                          markerfacecolor=color, markersize=10) for category, color in color_map.items()]
+    labels = list(color_map.keys())  # Extract the labels from the color map
+
+    # Create a new figure for the legend
+    fig_legend = plt.figure(figsize=(3, 2))  # Adjust size as needed
+    ax_legend = fig_legend.add_subplot(111)
+    ax_legend.axis('off')  # Turn off the axes
+
+    # Add the legend to the figure
+    legend = ax_legend.legend(handles, labels, loc='center', frameon=False)
+
+    # Save the legend as an image
+    fig_legend.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Legend saved to {output_path}")
+
+    # Close the figure
+    plt.close(fig_legend)
 
 
 if __name__ == "__main__":
