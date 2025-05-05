@@ -7,13 +7,10 @@
 
 import os
 import sys
-import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
 from osgeo_utils.gdal2xyz import gdal2xyz
-import csv
 import geopandas as gpd
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
 def wam_model_builder(
