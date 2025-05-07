@@ -18,6 +18,7 @@ def wam_model_builder(
     land_use_shapefile_name: str = 'Land_Use.shp',
     stream_node_raster_name: str = 'Streamnode.asc',
     uk_raster_name: str = 'UK_TP_Existing.tif',
+    nutrient: str = 'P',
     output_watershed_subbasin_land_use_name: str = 'Watershed_Subbasin_LU_TP.xlsx',
     ):
     gdal.PushErrorHandler('CPLQuietErrorHandler')
@@ -525,10 +526,10 @@ def wam_model_builder(
             results[luid] = {}
         
         if gridcode not in results[luid]:
-            results[luid][gridcode] = {"Area_ft2": 0, "TP_kg/ha": 0}
+            results[luid][gridcode] = {"Area_ft2": 0, f"T{nutrient}_kg/ha": 0}
         
         results[luid][gridcode]["Area_ft2"] += area
-        results[luid][gridcode]["TP_kg/ha"] += gridcode
+        results[luid][gridcode][f"T{nutrient}_kg/ha"] += gridcode
 
     # close the shapefile
     feature = None
@@ -550,7 +551,7 @@ def wam_model_builder(
     df.rename(columns={"level_0": "LUID", "level_1": "REACH"}, inplace=True)
 
     # re-arrange the column orders: "LUID", "REACH", "Area_ft2", "Area_ac", "TP_kg/ha"
-    df = df[["LUID", "REACH", "Area_ft2", "Area_ac", "TP_kg/ha"]]
+    df = df[["LUID", "REACH", "Area_ft2", "Area_ac", f"T{nutrient}_kg/ha"]]
 
     # Save the DataFrame to an Excel file without the integer index
     df.to_excel(out_path, index=False)
@@ -571,23 +572,24 @@ def wam_model_builder(
 if __name__ == '__main__':
     # working_path provided
     if len(sys.argv) < 2:
-        print('Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <output_watershed_subbasin_land_use_name.xlsx>')
+        print('Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <nutrient> <output_watershed_subbasin_land_use_name.xlsx>')
         print('Using current working directory as the working path')
         print('Using default file names')
         working_path = os.getcwd()
         file_names = {}
     # working_path and file names provided
-    elif len(sys.argv) == 6:
+    elif len(sys.argv) == 7:
         working_path = sys.argv[1]
         file_names = {
             'land_use_shapefile_name': sys.argv[2],
             'stream_node_raster_name': sys.argv[3],
             'uk_raster_name': sys.argv[4],
-            'output_watershed_subbasin_land_use_name': sys.argv[5]
+            'nutrient': sys.argv[5],
+            'output_watershed_subbasin_land_use_name': sys.argv[6]
         }
     # Invalid number of arguments provided
     else:
-        print("Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <output_watershed_subbasin_land_use_name.xlsx>")
+        print("Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <nutrient> <output_watershed_subbasin_land_use_name.xlsx>")
         print('Invalid number of arguments')
         print('Exiting...')
         sys.exit(1)
