@@ -1088,9 +1088,10 @@ class EPA:
             self.Solver = solver
             print('Solver is properly set to {}'.format(solver))
 
-    def WAM_InputGenerator_SO(self, Objective, TimePeriod = 1):
+    def WAM_InputGenerator_SO(self, Objective, TimePeriod: str = '1995'):
         self.softwareCode = 0
-        self.TimePeriod = TimePeriod
+        self.TimePeriod = self.TimePeriodFromString(TimePeriod)
+        self.networkAutomationTimePeriods = TimePeriod
         if isinstance(self.TimePeriod, int) != True:
             print("Please Enter integer values")
             return "Null"
@@ -1163,9 +1164,10 @@ class EPA:
 
         print("*****INPUT FILES GENERATED********")
 
-    def WAM_InputGenerator_MO(self, TimePeriod = 1):
+    def WAM_InputGenerator_MO(self, TimePeriod: str = '1995'):
         self.softwareCode = 0
-        self.TimePeriod = TimePeriod
+        self.TimePeriod = self.TimePeriodFromString(TimePeriod)
+        self.networkAutomationTimePeriods = TimePeriod
         wam_network_automation_mo(os.getcwd(), self.networkAutomationTimePeriods)
         self.BMP_Selection_MO()
         data = "WAM/Outputs/WAM_final_output_multiple_obj_optim.csv"
@@ -1177,9 +1179,10 @@ class EPA:
                 dest.write(line)
         self.run_GenInputMO()
 
-    def SWAT_InputGenerator_MO(self, TimePeriod = 1):
+    def SWAT_InputGenerator_MO(self, TimePeriod: str = '1995'):
         self.softwareCode = 1
-        self.TimePeriod = TimePeriod
+        self.TimePeriod = self.TimePeriodFromString(TimePeriod)
+        self.networkAutomationTimePeriods = TimePeriod
         swat_network_automation_mo(os.getcwd(), self.networkAutomationTimePeriods)
         self.BMP_Selection_MO()
         data = "SWAT/Outputs/SWAT_final_output_multiple_obj_optim.csv"
@@ -1191,9 +1194,10 @@ class EPA:
                 dest.write(line)
         self.run_GenInputMO()
 
-    def SWAT_InputGenerator_SO(self, Objective, TimePeriod = 1):
+    def SWAT_InputGenerator_SO(self, Objective, TimePeriod: str = '1995'):
         self.softwareCode = 1
-        self.TimePeriod = TimePeriod
+        self.TimePeriod = self.TimePeriodFromString(TimePeriod)
+        self.networkAutomationTimePeriods = TimePeriod
         if isinstance(self.TimePeriod, int) != True:
             print("Please Enter integer values")
             return "Null"
@@ -1479,6 +1483,21 @@ class EPA:
                     zf.write('MOOResults/CorrectedNDPs.csv')
             except:
                 print("Non Dominated Points file not found.")
+    
+    def TimePeriodFromString(self, time_period_string: str) -> int:
+        """
+        Parses a string of comma-separated years and returns the number of time periods
+        
+        Args:
+            time_periods_string (str): A string containing comma-separated time periods (e.g., "1995,1996,1997").
+            
+        Returns:
+            int: The number of time periods in the string.
+        """
+        time_period_string = time_period_string.replace(" ", "")
+        time_period_string = time_period_string.rstrip(",")
+        years = time_period_string.split(',')
+        return len(years)
 
 
 # %%
