@@ -17,7 +17,14 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import os
 
-def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, lookup_table_file: str, land_use_subbasin_file: str, out_file_basename: str):
+def wam_opt_visualization(
+    working_path: str,
+    aquanutriopt_output_file: str,
+    lookup_table_file: str = 'LOOKUP_Table.csv',
+    land_use_subbasin_file: str = 'Land_Subbasin_Intersection.shp',
+    watershed_boundary_file: str = 'Watershed.shp',
+    out_file_basename: str = 'visualization_output'
+    ):
     """
     Visualizes AquaNutriOpt outputs into a map of the land use with optimized BMPs for each subbasin
     
@@ -49,6 +56,11 @@ def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, look
     if not os.path.exists(Outputs_path):
         print(f"Create {Outputs_path} in the current working directory!")
         os.makedirs(Outputs_path)
+
+    # read the watershed shapefile for visualization
+    Watershed_path = os.path.join(Inputs_path, 'Watershed')
+    Watershed_path = os.path.join(Watershed_path, watershed_boundary_file)
+    Watershed_df = gpd.read_file(Watershed_path)
 
     # Read the Aquanutiopt output file
     # The Aquanutiopt output file contains the optimized BMPs for each subbasin
@@ -145,6 +157,7 @@ def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, look
     #               driver="ESRI Shapefile")
 
     category_field = "Opt_BMP_Name"
+    # category_field =  "Opt_BMP_Na"
 
     # Define the color mapping for each category
     master_category_color_rule = {
@@ -163,6 +176,7 @@ def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, look
         "FDACS irrigation improvement/fertigation": '#7F007F',  # Maroon
         "FDACS Well or Pipeline": '#00007F',  # Navy
         "fertility and low animal density BMP": '#7F7F7F',  # Gray
+        #####################################################
         "fertility and retention BMP": '#FF7FFF',  # Light Pink
         "fertility and storm retention BMP": '#FF7F7F',  # Light Red
         "fertility and waste balance BMP": '#7FFF7F',  # Light Green
@@ -179,13 +193,15 @@ def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, look
         "Offsite Tertiary fertility and storm retention BMP": '#007F7F',  # Light Gray
         "retention and irrigation BMP": '#7F007F',  # Light Pink
         "retention and water BMP": '#00007F',  # Light Red
-        "retention BMP": '#7F7F7F',  # Light Green
-        "Sprayfield": '#FF7FFF',  # Light Blue
-        "storm retention BMP": '#7F7F00',  # Light Orange
+        ####################Overlapping in color##############################
+        "retention BMP": '#00FFFF',  # Light Cyan 
+        "Sprayfield": '#FF7FFF',  # Light Pink
+        "storm retention BMP": '#7F7F00',  # Light Olive
         "waste balance BMP": '#7F00FF',  # Light Purple
         "water BMP": '#FF00FF',  # Light Magenta
         ###############
         "No BMP": '#FFFFFF',  # White
+        
         }
 
     output_path = os.path.join(Outputs_path, out_file_basename + '.png')
@@ -193,7 +209,16 @@ def wam_opt_visualization(working_path: str, aquanutriopt_output_file: str, look
 
     # Call the function to visualize the Existing_LU shapefile for the category field. 
     # Then, save the figure to the output path.
+
+    # load the shapefile 
+    #Existing_LU_path = os.path.join(Outputs_path, 'LU_with_OptimizedBMPs.shp')
+
+    #Existing_LU = gpd.read_file(Existing_LU_path)
+
+    # print(Existing_LU.info())
+
     visualize_shapefile(Existing_LU, 
+                        Watershed_df,
                         category_field, 
                         master_category_color_rule,  
                         output_path)
@@ -234,6 +259,7 @@ def visualize_shapefile_to_geojson(gdf, category_field, category_color_rule, out
     gdf.to_crs('EPSG:4326').to_file(output_path, driver='GeoJSON')
 
 def visualize_shapefile(gdf, 
+                        watershed_df,
                         category_field, 
                         category_color_rule, 
                         output_path=None):
@@ -241,34 +267,40 @@ def visualize_shapefile(gdf,
     Visualizes a shapefile with categories mapped to specific colors.
 
     Parameters:
-        vector_file_path (str): Path to the shapefile.
-        category_field (str): The field used for categorization.
+        gdf (GeoPandas Dataframe): The GeoDataFrame containing the shapefile data.
+        category_field (str): The field used for categorization such as 'Opt_BMP_Name'.
         category_color_rule (dict): A dictionary mapping category values to colors.
         output_path (str): Path to save the output plot. If None, the plot is not saved.
 
     Returns:
         None
     """
-    # Extract unique categories
+    # Extract unique categories of the specified field
     unique_categories = gdf[category_field].unique()
     # print("Unique categories:", unique_categories)
 
     # Create a color map based on the data
     color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
     # print("Color map:", color_map)
+    # use color and pattern to distinguish "retention BMP"
 
-    # Plot the shapefile
-    fig, ax = plt.subplots(figsize=(10, 10))
-    # # add legend into the plot to explain its colors.
-    # for category, color in color_map.items():
-    #     gdf[gdf[category_field] == category].plot(ax=ax, 
-    #                                               color=color, 
-    #                                               label=category, 
-    #                                               edgecolor='black')
+
+    # Plot the shapefile using gdf["geometry"]
+    fig, ax = plt.subplots(figsize=(12, 12))
+
+    # Plot the watershed GeoDataFrame
+    watershed_df.plot(ax=ax, 
+                      color='lightblue', 
+                      edgecolor='black', 
+                      alpha=0.5
+                    )
+
     gdf.plot(column=category_field, 
-            ax=ax, 
-            color=gdf[category_field].map(color_map), 
-            legend=True)
+             ax=ax, 
+             color=gdf[category_field].map(color_map), 
+            #  edgecolor='black',
+                # linewidth=0.2,
+             legend=True)
     
     # add legend into the plot to explain its colors.
     handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
