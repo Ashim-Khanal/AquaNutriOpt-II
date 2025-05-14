@@ -304,7 +304,7 @@ def visualize_shapefile(gdf,
     
     # add legend into the plot to explain its colors.
     handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
-                            markerfacecolor=color, markersize=10) for category, color in color_map.items()]
+                            markerfacecolor=color, markersize=10) for category, color in color_map.items() if category != "No BMP"]
     ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1, 1), title=category_field)
     # Set title and labels
     ##############
@@ -339,6 +339,9 @@ def save_legend_as_image(color_map, output_path):
     Returns:
         None
     """
+    # Remove "No BMP" from the legend
+    color_map = {k: v for k, v in color_map.items() if k != "No BMP"}
+    
     # Create legend handles and labels from the color map
     handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
                           markerfacecolor=color, markersize=10) for category, color in color_map.items()]
