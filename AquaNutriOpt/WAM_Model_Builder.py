@@ -7,16 +7,20 @@
 
 import os
 import sys
-import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
 from osgeo_utils.gdal2xyz import gdal2xyz
-import csv
 import geopandas as gpd
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
-def wam_model_builder(working_path: str):
+def wam_model_builder(
+    working_path: str,
+    land_use_shapefile_name: str = 'Land_Use.shp',
+    stream_node_raster_name: str = 'Streamnode.asc',
+    uk_raster_name: str = 'UK_TP_Existing.tif',
+    nutrient: str = 'P',
+    output_watershed_subbasin_land_use_name: str = 'Watershed_Subbasin_LU_TP.xlsx',
+    ):
     gdal.PushErrorHandler('CPLQuietErrorHandler')
 
     ######## Step 01: Run gdal_polygonize ################ 
@@ -48,7 +52,7 @@ def wam_model_builder(working_path: str):
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = "Streamnode.asc"
+    raster_path = stream_node_raster_name
     raster_path = os.path.join(Inputs_path, raster_path)
     raster = gdal.Open(raster_path)
     srcBand = raster.GetRasterBand(1)  # Use Band 1 for polygonization
@@ -141,7 +145,7 @@ def wam_model_builder(working_path: str):
     if os.path.exists(fix_vector_path):
         driver.DeleteDataSource(fix_vector_path)  # Remove existing file
 
-    ds_path = "Land_Use.shp"
+    ds_path = land_use_shapefile_name
     ds_path = os.path.join(Inputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Return a ogr.DataSource object
@@ -319,7 +323,7 @@ def wam_model_builder(working_path: str):
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = "UK_TP_Existing.tif"  # Replace with your actual file path
+    raster_path = uk_raster_name  # Replace with your actual file path
     raster_path = os.path.join(Inputs_path, raster_path)
     raster_ds = gdal.Open(raster_path) # return a gdal.Dataset object
     TP_band = raster_ds.GetRasterBand(1)
@@ -501,7 +505,7 @@ def wam_model_builder(working_path: str):
     # ####################Step 07: Group By####################################
     print(10*"-", "Group by the New_Sub_LU_TP.shp by LUID, B_GRIDCODE and compute the sum of AREA, and GRIDCODE ", 10*"-")
     # export to a Excel file
-    out_path = 'Watershed_Subbasin_LU_TP.xlsx'
+    out_path = output_watershed_subbasin_land_use_name
     out_path = os.path.join(Outputs_path, out_path)
 
     # Open the shapefile
@@ -522,10 +526,10 @@ def wam_model_builder(working_path: str):
             results[luid] = {}
         
         if gridcode not in results[luid]:
-            results[luid][gridcode] = {"Area_ft2": 0, "TP_kg/ha": 0}
+            results[luid][gridcode] = {"Area_ft2": 0, f"T{nutrient}_kg/ha": 0}
         
         results[luid][gridcode]["Area_ft2"] += area
-        results[luid][gridcode]["TP_kg/ha"] += gridcode
+        results[luid][gridcode][f"T{nutrient}_kg/ha"] += gridcode
 
     # close the shapefile
     feature = None
@@ -547,7 +551,7 @@ def wam_model_builder(working_path: str):
     df.rename(columns={"level_0": "LUID", "level_1": "REACH"}, inplace=True)
 
     # re-arrange the column orders: "LUID", "REACH", "Area_ft2", "Area_ac", "TP_kg/ha"
-    df = df[["LUID", "REACH", "Area_ft2", "Area_ac", "TP_kg/ha"]]
+    df = df[["LUID", "REACH", "Area_ft2", "Area_ac", f"T{nutrient}_kg/ha"]]
 
     # Save the DataFrame to an Excel file without the integer index
     df.to_excel(out_path, index=False)
@@ -565,12 +569,30 @@ def wam_model_builder(working_path: str):
     # create a SLURM's srun command to run the script
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python WAM_Model_Builder.py <working_path>")
-        print("Using current working directory as the working path")
+if __name__ == '__main__':
+    # working_path provided
+    if len(sys.argv) < 2:
+        print('Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <nutrient> <output_watershed_subbasin_land_use_name.xlsx>')
+        print('Using current working directory as the working path')
+        print('Using default file names')
         working_path = os.getcwd()
-    else:
+        file_names = {}
+    # working_path and file names provided
+    elif len(sys.argv) == 7:
         working_path = sys.argv[1]
+        file_names = {
+            'land_use_shapefile_name': sys.argv[2],
+            'stream_node_raster_name': sys.argv[3],
+            'uk_raster_name': sys.argv[4],
+            'nutrient': sys.argv[5],
+            'output_watershed_subbasin_land_use_name': sys.argv[6]
+        }
+    # Invalid number of arguments provided
+    else:
+        print("Usage: python WAM_Model_Builder.py <working_path> <land_use_shapefile_name.shp> <stream_node_raster_name.asc> <uk_raster_name.tif> <nutrient> <output_watershed_subbasin_land_use_name.xlsx>")
+        print('Invalid number of arguments')
+        print('Exiting...')
+        sys.exit(1)
     
-    wam_model_builder(working_path)
+    # Run the WAM_Model_Builder function
+    wam_model_builder(working_path, **file_names)

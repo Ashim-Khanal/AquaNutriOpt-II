@@ -313,6 +313,8 @@ def WAM_Network_Automation_TP(working_path: str, time_periods: str):
     # check if 'Reach' exists in Watershed_annual_df
     if 'Reach' in Watershed_annual_TP_df.columns:
         Watershed_annual_TP_df.rename(columns={'Reach': 'REACH'}, inplace=True)
+    elif 'REACH' in Watershed_annual_TP_df.columns:
+        pass
     else:
         print("Error: Column 'Reach' does not exists in Watershed_annual_df!")
         #exit the program
@@ -332,6 +334,10 @@ def WAM_Network_Automation_TP(working_path: str, time_periods: str):
 
     # #drop Area_ha column
     Watershed_annual_TN_df.drop(columns=['Area_ha'], inplace=True)
+    
+    # Drop overlapping columns in Watershed_annual_TP_df and Watershed_annual_TN_df
+    Watershed_annual_TN_df.drop(columns=['Area_ft2', 'Area_ac'], inplace=True)
+    
     # # merge the two dataframes
     Watershed_annual_subbasin_reach_TP_TN_df = pd.merge(Watershed_annual_TP_df, 
                                                         Watershed_annual_TN_df, 
