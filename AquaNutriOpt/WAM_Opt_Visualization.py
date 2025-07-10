@@ -33,6 +33,7 @@ def wam_opt_visualization(
         aquanutriopt_output_file (str): The name of the AquaNutriOpt output file.
         lookup_table_file (str): The name of the LOOKUP table file that maps BMPs to their corresponding LU_Base and LU_Code.
         land_use_subbasin_file (str): The name of the Land Use Subbasin shapefile.
+        watershed_boundary_file (str): The name of the watershed boundary shapefile. Pass the empty string if not available.
         out_file_basename (str): The base name for the output files (image and geojson) (The name of the output file without the extension).
         
     Returns:
@@ -60,7 +61,10 @@ def wam_opt_visualization(
     # read the watershed shapefile for visualization
     Watershed_path = os.path.join(Inputs_path, 'Watershed')
     Watershed_path = os.path.join(Watershed_path, watershed_boundary_file)
-    Watershed_df = gpd.read_file(Watershed_path)
+    if watershed_boundary_file.strip() and os.path.exists(Watershed_path):
+        Watershed_df = gpd.read_file(Watershed_path)
+    else:
+        Watershed_df = None
 
     # Read the Aquanutiopt output file
     # The Aquanutiopt output file contains the optimized BMPs for each subbasin
@@ -268,6 +272,7 @@ def visualize_shapefile(gdf,
 
     Parameters:
         gdf (GeoPandas Dataframe): The GeoDataFrame containing the shapefile data.
+        watershed_df (GeoPandas Dataframe): The GeoDataFrame containing the watershed boundary data. Pass None if not available.
         category_field (str): The field used for categorization such as 'Opt_BMP_Name'.
         category_color_rule (dict): A dictionary mapping category values to colors.
         output_path (str): Path to save the output plot. If None, the plot is not saved.
@@ -289,11 +294,12 @@ def visualize_shapefile(gdf,
     fig, ax = plt.subplots(figsize=(12, 12))
 
     # Plot the watershed GeoDataFrame
-    watershed_df.plot(ax=ax, 
-                      color='lightblue', 
-                      edgecolor='black', 
-                      alpha=0.5
-                    )
+    if watershed_df is not None:
+        watershed_df.plot(ax=ax, 
+                        color='lightblue', 
+                        edgecolor='black', 
+                        alpha=0.5
+                        )
 
     gdf.plot(column=category_field, 
              ax=ax, 
