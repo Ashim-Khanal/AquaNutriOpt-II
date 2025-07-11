@@ -207,6 +207,21 @@ def wam_opt_visualization(
         "No BMP": '#FFFFFF',  # White
         
         }
+    
+    _colors = [
+        '#E12300', '#D38306', '#F4ED01', '#649C31', '#038DBB', '#0057D5', '#391B95', '#77239D', '#FE634D',
+        '#FFB23C', '#FBF968', '#97D45F', '#00C7FF', '#3689FF', '#5A32EB', '#BC37F2', '#FCB5AF', '#FFD8A8',
+        '#FFFCB5', '#CDE9B8', '#90E4FE', '#AAC4FD', '#B28CFB', '#E395FB', '#FE4310', '#FFAA00', '#FDFB44',
+        '#75BA43', '#00A2D8', '#0460FF', '#4A24B7', '#9A2ABA', '#B51902', '#AB6702', '#C2BD00', '#4C7C28',
+        '#00728B', '#0142A6', '#2C1378', '#63167E', '#FF8C85', '#FFC878', '#FDFA91', '#B0DC87', '#55D6FE',
+        '#75A7FE', '#854FFB', '#D456FF', '#FFD8D9', '#FFEBD3', '#FFFCDB', '#E2EBDA', '#CAF2FE', '#D4E4FB',
+        '#DACAFB', '#F1C9FE', '#830D00', '#794803', '#888901', '#3B571C', '#004B63', '#013078', '#180B51',
+        '#450F5D', '#FF0000', '#FF8000', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8000FF', '#800000',
+        '#804000', '#808000', '#008000', '#008080', '#000080', '#400080', '#FF2A00', '#FFAA00', '#AAFF00',
+        '#00FF55', '#00AAFF', '#2A00FF', '#8000AA', '#801500', '#805500', '#558000', '#00802A', '#005580',
+        '#150080', '#FF5500', '#FFD400', '#55FF00', '#00FFAA', '#0055FF', '#5500FF', '#800055', '#802A00',
+        '#806A00', '#2A8000', '#008055', '#002A80', '#2A0080'
+    ]
 
     output_path = os.path.join(Outputs_path, out_file_basename + '.png')
     geojson_output_path = os.path.join(Outputs_path, out_file_basename + '.geojson')
@@ -224,11 +239,11 @@ def wam_opt_visualization(
     visualize_shapefile(Existing_LU, 
                         Watershed_df,
                         category_field, 
-                        master_category_color_rule,  
+                        _colors,  
                         output_path)
 
     # Call the function to visualize the Existing_LU shapefile for the category field and save it as a GeoJSON file.
-    visualize_shapefile_to_geojson(Existing_LU, category_field, master_category_color_rule, geojson_output_path)
+    visualize_shapefile_to_geojson(Existing_LU, category_field, _colors, geojson_output_path)
 
 
 def visualize_shapefile_to_geojson(gdf, category_field, category_color_rule, output_path=None):
@@ -238,7 +253,7 @@ def visualize_shapefile_to_geojson(gdf, category_field, category_color_rule, out
     Args:
         gdf (GeoDataFrame): The GeoDataFrame containing the shapefile data.
         category_field (str): The field used for categorization.
-        category_color_rule (dict): A dictionary mapping category values to colors.
+        category_color_rule (dict|list): A dictionary mapping category values to colors or a list of colors.
         output_path (str): Path to save the output GeoJSON file. If None, the file is not saved.
         
     Returns:
@@ -248,7 +263,13 @@ def visualize_shapefile_to_geojson(gdf, category_field, category_color_rule, out
     unique_categories = gdf[category_field].unique()
 
     # Create a color map based on the data
-    color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
+    if isinstance(category_color_rule, list):
+        color_map = {}
+        for i, category in enumerate(unique_categories):
+            color_map[category] = category_color_rule[i % len(category_color_rule)]
+        color_map["No BMP"] = '#FFFFFF'  # White for "No BMP"
+    else:
+        color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
     
     # Add a 'category' field to the GeoDataFrame
     gdf['category'] = gdf[category_field]
@@ -274,7 +295,7 @@ def visualize_shapefile(gdf,
         gdf (GeoPandas Dataframe): The GeoDataFrame containing the shapefile data.
         watershed_df (GeoPandas Dataframe): The GeoDataFrame containing the watershed boundary data. Pass None if not available.
         category_field (str): The field used for categorization such as 'Opt_BMP_Name'.
-        category_color_rule (dict): A dictionary mapping category values to colors.
+        category_color_rule (dict|list): A dictionary mapping category values to colors or a list of colors.
         output_path (str): Path to save the output plot. If None, the plot is not saved.
 
     Returns:
@@ -285,7 +306,13 @@ def visualize_shapefile(gdf,
     # print("Unique categories:", unique_categories)
 
     # Create a color map based on the data
-    color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
+    if isinstance(category_color_rule, list):
+        color_map = {}
+        for i, category in enumerate(unique_categories):
+            color_map[category] = category_color_rule[i % len(category_color_rule)]
+        color_map["No BMP"] = '#FFFFFF'  # White for "No BMP"
+    else:
+        color_map = {category: category_color_rule.get(category, "white") for category in unique_categories}
     # print("Color map:", color_map)
     # use color and pattern to distinguish "retention BMP"
 
@@ -345,13 +372,12 @@ def save_legend_as_image(color_map, output_path):
     Returns:
         None
     """
-    # Remove "No BMP" from the legend
-    color_map = {k: v for k, v in color_map.items() if k != "No BMP"}
+    # Filter out invalid categories and create handles and labels together
+    filtered_items = [(category, color) for category, color in color_map.items() if category and str(category).strip() and category != "No BMP"]
     
-    # Create legend handles and labels from the color map
-    handles = [plt.Line2D([0], [0], marker='o', color='w', label=category,
-                          markerfacecolor=color, markersize=10) for category, color in color_map.items()]
-    labels = list(color_map.keys())  # Extract the labels from the color map
+    # Create handles and labels from the filtered items
+    handles = [plt.Line2D([0], [0], marker='o', color='w', label=category, markerfacecolor=color, markersize=10) for category, color in filtered_items]
+    labels = [category for category, color in filtered_items]
 
     # Create a new figure for the legend
     fig_legend = plt.figure(figsize=(3, 2))  # Adjust size as needed
