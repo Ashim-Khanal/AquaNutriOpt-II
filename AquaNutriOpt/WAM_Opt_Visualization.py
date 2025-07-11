@@ -380,7 +380,7 @@ def save_legend_as_image(color_map, output_path):
     labels = [category for category, color in filtered_items]
 
     # Create a new figure for the legend
-    fig_legend = plt.figure(figsize=(3, 2))  # Adjust size as needed
+    fig_legend = plt.figure(figsize=(3, 0.10 * len(filtered_items)))
     ax_legend = fig_legend.add_subplot(111)
     ax_legend.axis('off')  # Turn off the axes
 
