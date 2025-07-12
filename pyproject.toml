@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "AquaNutriOpt"
-version = "2.2.2"
+version = "2.2.3"
 description = "Finds the optimal placement of BMPs and Technologies in a network in order to reduce the nutrient loadings at the lake with multiple objectives taking different year nutrient loadings in consideration"
 readme = "README.md"
 license = {file = "LICENSE"}
