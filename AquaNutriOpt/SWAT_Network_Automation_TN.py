@@ -8,6 +8,7 @@ import csv
 import sys
 from AquaNutriOpt.SWAT_utils import *
 
+
 def swat_network_automation_tn(working_path: str, time_periods: str):
     """Performs network automation for single-objective optimization on SWAT inputs for minimizing nitrogen.
     
@@ -19,15 +20,10 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
     # 1. Need to check LUID column of the final output for any blank value. If yes, need to update the input file. (LUID.xlsx.)
     ##################################
 
-    # In[5]:
-
 
     Swat_path = os.path.join(working_path, 'SWAT')
     Inputs_path = os.path.join(Swat_path, 'Inputs')
     Outputs_path = os.path.join(Swat_path, 'Outputs')
-
-
-
 
 
     if not os.path.exists(Swat_path):
@@ -168,10 +164,37 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
     cols_to_group_by = ['REACH', 'YEAR']
 
     # TP
-    #cols_to_summarize_TP = ['ORGP_OUTkg', 'MINP_OUTkg']
-    #Watershed_annual_TP_df = Watershed_annual_df.groupby(cols_to_group_by)[cols_to_summarize_TP].sum()
-    #Watershed_annual_TP_df['TPtons'] = ( Watershed_annual_TP_df['ORGP_OUTkg'] + Watershed_annual_TP_df['MINP_OUTkg'] )/1000
+    cols_to_summarize_TP = ['ORGP_OUTkg', 'MINP_OUTkg']
+    Watershed_annual_TP_df = Watershed_annual_df.groupby(cols_to_group_by)[cols_to_summarize_TP].sum()
+    Watershed_annual_TP_df['TPtons'] = ( Watershed_annual_TP_df['ORGP_OUTkg'] + Watershed_annual_TP_df['MINP_OUTkg'] )/1000
 
+
+    Watershed_annual_TP_df = Watershed_annual_TP_df.reset_index()
+
+    df_tp_unstacked = Watershed_annual_TP_df.pivot(index='REACH', 
+                                                columns='YEAR', 
+                                                values='TPtons')
+
+    # create Watershed_w_Split_annual_TN_df by using the outgoing reach
+    Watershed_w_Split_annual_TP_df = pd.DataFrame()
+    n_yrs = len(df_tp_unstacked.columns)
+    Years = np.zeros(n_yrs)
+    for i in range(n_yrs):
+        Years[i] = df_tp_unstacked.columns[i]#avoid the for loop.
+    Years = Years.astype(int)
+    Fst_Yr = Years[0]
+    Lst_Yr = Years[-1]
+    for i in range(len(Final_Output_df)):
+        TP_Load_tons = np.zeros(len(Years))
+        # print('%s_%s' % (Final_Output_df_copy['REACH'].iloc[i], Final_Output_df_copy['Outgoing'].iloc[i]))
+        for j in range(len(df_tp_unstacked)):
+            if Final_Output_df['REACH'].iloc[i] == str(df_tp_unstacked.index[j]):
+                # print('Reach =', Final_Output_df['REACH'].iloc[i], 'Outgoing = ' , Final_Output_df['Outgoing'].iloc[i])
+                for y in Years:
+                    TP_Load_tons[y - Fst_Yr] = df_tp_unstacked[y].iloc[i]
+                Watershed_w_Split_annual_TP_df['%s_%s' % (Final_Output_df['REACH'].iloc[i], Final_Output_df['Outgoing'].iloc[i])] = TP_Load_tons 
+                
+    Watershed_w_Split_annual_TP_df = Watershed_w_Split_annual_TP_df.T
 
     # TN
     cols_to_summarize_TN = ['ORGN_OUTkg', 'NO3_OUTkg', 'NH4_OUTkg', 'NO2_OUTkg']
@@ -220,13 +243,13 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
 
     # COLUMNS_TO_DROP = ['Area_ha', 'TP_tons', 'sum_percent_TP_TN']
     COLUMNS_TO_DROP = ['Area_ha', 'TP_tons', 'TN_tons', 'sum_percent_TP_TN']
-    COLUMNS_TO_DROP_TP_TN = ['Area_ha', 'TP_tons', 'TN_tons']
+    
 
     # COLUMNS_TO_KEEP = ['REACH', 'LUID', 'Area_acres', 
     #                    'percent_TP_tons_by_REACH']
     COLUMNS_TO_KEEP_TP = ['REACH', 'LUID', 'Area_acres', 'percent_TP_tons_by_REACH']
     COLUMNS_TO_KEEP_TN = ['REACH', 'LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
-    COLUMNS_TO_KEEP_TP_TN = ['REACH', 'LUID', 'Area_acres', 'percent_TP_tons_by_REACH', 'percent_TN_tons_by_REACH', 'sum_percent_TP_TN']
+    
 
     #out5_TP_file = 'Watershed_single_obj_opti_TP.csv'
     #out5_TP = os.path.join(Outputs_path, out5_TP_file)
@@ -240,7 +263,9 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
 
     #calculate the Area_ac
     Watershed_annual_subbasin_df['Area_ac'] = Watershed_annual_subbasin_df['AREAkm2'] * 247.105
-    Watershed_annual_subbasin_df['Area_ac'] = Watershed_annual_subbasin_df['Area_ac'].apply(np.ceil).astype(int)
+    # Watershed_annual_subbasin_df['Area_ac'] = ( 
+    #         Watershed_annual_subbasin_df['Area_ac'].astype(int)
+    # )
 
     Watershed_annual_subbasin_df['Area_ha'] = Watershed_annual_subbasin_df['AREAkm2'] * 100
 
@@ -287,19 +312,6 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
 
     #pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
 
-
-    # # single objective optimization
-
-    # # TP
-    #pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH']
-    #hru_df_single_obj_opti_TP = process_single_multi_obj_data(pivotT, 
-    #                             'TP',
-    #                              'single_obj', 
-    #                              COLUMNS_TO_DROP, 
-    #                              COLUMNS_TO_KEEP_TP, 
-    #                              out5_TP)
-
-
     # TN
     pivotT['sum_percent_TP_TN'] = pivotT['percent_TN_tons_by_REACH']
     hru_df_single_obj_opti_TN = process_single_multi_obj_data(pivotT, 
@@ -308,25 +320,20 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
                                 COLUMNS_TO_DROP, 
                                 COLUMNS_TO_KEEP_TN, 
                                 out5_TN)
-    # # TP_TN
-    # pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
-    # hru_df_multiple_obj_opti_TP_TN = process_single_multi_obj_data(pivotT, 
-    #                               'TP_TN',
-    #                               'multi_obj',
-    #                               COLUMNS_TO_DROP_TP_TN, 
-    #                               COLUMNS_TO_KEEP_TP_TN, 
-    #                               out5_TP_TN)
-
+    
     # # # 6. Collect data for the final outputs
     IP_Reaches_In_Out =  Final_Output_df
+    IP_TP_Splitting = Watershed_w_Split_annual_TP_df
     IP_TN_Splitting = Watershed_w_Split_annual_TN_df
 
-    #update_tp_tn_df
-    TN_df = pd.DataFrame()
+    # print("############################")
+    # print(IP_TP_Splitting.head())
+    #Create TP_df
+    TP_df = pd.DataFrame()
     for i in range(len(IP_Reaches_In_Out)):
         TP_Out = np.zeros(len(Years))
         TP_In = np.zeros(len(Years))
-        for reach_reach, cols in IP_TN_Splitting.iterrows():
+        for reach_reach, cols in IP_TP_Splitting.iterrows():
             if IP_Reaches_In_Out['REACH'].iloc[i] == reach_reach.split("_")[0]:
                 for y in Years:
                     TP_Out[y - Fst_Yr] = TP_Out[y - Fst_Yr] + cols[y- Fst_Yr]
@@ -335,7 +342,50 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
                 for y in Years:
                     TP_In[y - Fst_Yr] = TP_In[y - Fst_Yr] + cols[y- Fst_Yr]
                 
-        TN_df['%s' % (IP_Reaches_In_Out['REACH'].iloc[i])] = TP_Out - TP_In
+        TP_df['%s' % (IP_Reaches_In_Out['REACH'].iloc[i])] = TP_Out - TP_In
+    
+    
+
+    Final_Network_TP_df = process_new_tp_tn_df(TP_df, 
+                                            IP_Reaches_In_Out, 
+                                            Fst_Yr, 
+                                            Lst_Yr)
+    
+    
+    for i in range(len(IP_Reaches_In_Out)):
+        TN_Out = np.zeros(len(Years))
+        TN_In = np.zeros(len(Years))
+        reach_id = str(IP_Reaches_In_Out['REACH'].iloc[i])
+        found_out = False
+        found_in = False
+        for reach_reach, cols in IP_TN_Splitting.iterrows():
+            out_id = reach_reach.split("_")[0]
+            in_id = reach_reach.split("_")[1]
+            if reach_id == out_id:
+                found_out = True
+            if reach_id == in_id:
+                found_in = True
+        print(f"REACH {reach_id}: found_out={found_out}, found_in={found_in}")
+    
+    #Create TN_df
+    TN_df = pd.DataFrame()
+    for i in range(len(IP_Reaches_In_Out)):
+        TN_Out = np.zeros(len(Years))
+        TN_In = np.zeros(len(Years))
+        reach_id = str(IP_Reaches_In_Out['REACH'].iloc[i])
+        for reach_reach, cols in IP_TN_Splitting.iterrows():
+            if reach_id == reach_reach.split("_")[0]:
+                for y in Years:
+                    # print(f"REACH {reach_id}: cols[{y} - {Fst_Yr}]={cols[y - Fst_Yr]}")
+                    TN_Out[y - Fst_Yr] = TN_Out[y - Fst_Yr] + cols[y- Fst_Yr]
+            
+            if reach_id == reach_reach.split("_")[1]:
+                for y in Years:
+                    TN_In[y - Fst_Yr] = TN_In[y - Fst_Yr] + cols[y- Fst_Yr]
+                
+        TN_df['%s' % (IP_Reaches_In_Out['REACH'].iloc[i])] = TN_Out - TN_In
+        # print(f"REACH {reach_id}: TN_Out={TN_Out}, TN_In={TN_In}, Difference={TN_Out - TN_In}")
+
 
     Final_Network_TN_df = process_new_tp_tn_df(TN_df, 
                                             IP_Reaches_In_Out, 
@@ -343,38 +393,52 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
                                             Lst_Yr)
 
     ################ Compute splitting ratio ###################
+    Splitting_TP_df = create_splitting_tp_tn_df(IP_Reaches_In_Out)
     Splitting_TN_df = create_splitting_tp_tn_df(IP_Reaches_In_Out)
 
-    #Update Splitting_TN_df
+    #Update Splitting_TP_df
     for i in range(len(IP_Reaches_In_Out)): # for each round in IP_Reaches_In_Out
         # if the current row's 'Outgoing' is a string variable then
         if type(IP_Reaches_In_Out['Outgoing'].iloc[i]) == str:
             # if there is more than 1 outgoing, then
             if len(IP_Reaches_In_Out['Outgoing'].iloc[i].split(",")) > 1:
-                #Splt_TP = [] # this variable is going to be changed.
                 Splt_TN = [] # this variable is going to be changed.
+                Splt_TP = [] # this variable is going to be changed.
                 for j in IP_Reaches_In_Out['Outgoing'].iloc[i].split(","): # for each outgoing point then
                     try:
                         #Splt_TP.append(IP_TP_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
                         Splt_TN.append(IP_TN_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
+                        Splt_TP.append(IP_TP_Splitting.loc['%s_%s'%(IP_Reaches_In_Out['REACH'].iloc[i],j)][:].mean())
                     except KeyError as e:
-                        print(f"Error: Could not locate the row with key '{e.args[0]}' in IP_TN_Splitting.")
+                        print(f"Error: Could not locate the row with key '{e.args[0]}' in IP_TP_Splitting.")
                         continue
                 # for each element in Splt, if the element is negative, then remove it.
                 #New_Splt_TP = [k for k in Splt_TP if k > 0]       
+                New_Splt_TP = []
+                for k in Splt_TP:
+                    if k < 0:
+                        New_Splt_TP.append(0)
+                    else:
+                        New_Splt_TP.append(k)
+                
                 New_Splt_TN = []
                 for k in Splt_TN:
                     if k < 0:
                         New_Splt_TN.append(0)
                     else:
-                        New_Splt_TN.append(k) 
-                #Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TP)).astype(str) for k in New_Splt_TP)
+                        New_Splt_TN.append(k)
                 Splitting_TN_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TN)).astype(str) for k in New_Splt_TN)
-
+                Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ' '.join((k/sum(New_Splt_TP)).astype(str) for k in New_Splt_TP)
             else:
                 #In Ratio column, If no multiple outgoings, then it was empty.
+                Splitting_TP_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ''
                 Splitting_TN_df['Ratio'].loc[IP_Reaches_In_Out['REACH'].iloc[i]] = ''
-                
+
+    Final_Network_TP_df = pd.merge(Final_Network_TP_df,
+                                Splitting_TP_df, 
+                                how = 'inner',
+                                on = 'REACH')
+
     Final_Network_TN_df = pd.merge(Final_Network_TN_df,
                                 Splitting_TN_df, 
                                 how = 'inner',
@@ -396,24 +460,29 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
         Years = [int(i) for i in Years]
     # print(type(Years))
     final_columns_format_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years + ['LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
-    merged_df_single_obj_optim_TN = merge_ratio_TP_TN_percentage_data(Final_Network_TN_df, 
+    merged_df_single_obj_optim_TN = merge_ratio_TP_TN_percentage_data(Final_Network_TP_df, 
                                                                     hru_df_single_obj_opti_TN,
                                                                     final_columns_format_TN)
 
-    for i in Years:
-        # if str(i) or i is in the columns of merged_df_single_obj_optim_TP, then
-        if i in merged_df_single_obj_optim_TN.columns:
-            # TP: create a copy of the found column and name the new column by adding '_x' to the found column. 
-            merged_df_single_obj_optim_TN[str(i) + '_x'] = merged_df_single_obj_optim_TN[i]
-            # replace every value in the new column with zeros.
-            merged_df_single_obj_optim_TN[str(i) + '_x'] = 0
-            # rename the original column by adding with the element + '_y'
-            merged_df_single_obj_optim_TN.rename(columns={i: str(i) + '_y'}, inplace=True)
 
+    COLUMNS_TO_DROP_TN = ['Ingoing', 'Outgoing', 'Ratio'] 
+    Final_Network_TN_df.drop(columns=COLUMNS_TO_DROP_TN, inplace=True)
+
+    
+
+    Years_x = [str(i) + '_x' for i in Years]
+    Years_y = [str(i) + '_y' for i in Years]
+
+    final_columns_format_TP = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years_x + Years_y + ['LUID', 'Area_acres', 'percent_TN_tons_by_REACH']
+    merged_df_single_obj_optim_TN =  merge_ratio_TP_TN_percentage_data(merged_df_single_obj_optim_TN,
+                                                                    Final_Network_TN_df,    
+                                                                       final_columns_format_TP)
+    
+    
     ###################################################################################
 
-    if type(merged_df_single_obj_optim_TN['Area_acres']) != int:
-        merged_df_single_obj_optim_TN['Area_acres'] = merged_df_single_obj_optim_TN['Area_acres'].astype(int)
+    # if type(merged_df_single_obj_optim_TN['Area_acres']) != int:
+    #     merged_df_single_obj_optim_TN['Area_acres'] = merged_df_single_obj_optim_TN['Area_acres'].astype(int)
 
     luid_df = load_data(input_luid_file)
     merged_df_single_obj_optim_TN = pd.merge(merged_df_single_obj_optim_TN,
@@ -422,16 +491,7 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
                                             left_on='LUID',
                                             right_on='swat_code')
 
-    # for i in range(len(merged_df_single_obj_optim_TN)):
-    #     if merged_df_single_obj_optim_TN['LUID'].iloc[i] == 'CORN':
-    #         merged_df_single_obj_optim_TN['landuse_id'].iloc[i] = 99990
-    #     elif merged_df_single_obj_optim_TN['LUID'].iloc[i] == 'OATS':
-    #         merged_df_single_obj_optim_TN['landuse_id'].iloc[i] = 99991
-    #     #elif the landuse_id is blank or null, then set it to 9999
-    #     elif pd.isnull(merged_df_single_obj_optim_TN['landuse_id'].iloc[i]):
-    #         merged_df_single_obj_optim_TN['landuse_id'].iloc[i] = 9999
-    #     else:
-    #         pass
+    
     Years_x = [str(i) + '_x' for i in Years]
     Years_y = [str(i) + '_y' for i in Years]
 
@@ -442,12 +502,24 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
     merged_df_single_obj_optim_TN.rename(columns={'WAM_LUID': 'LUID'}, inplace=True)
 
     #if type of LUID is not integer, LUID is integer
-    if merged_df_single_obj_optim_TN['LUID'].dtype != int:
+    if type(merged_df_single_obj_optim_TN['LUID']) != int:
         merged_df_single_obj_optim_TN['LUID'] = merged_df_single_obj_optim_TN['LUID'].astype(int)
 
-    # if merged_df_single_obj_optim_TN['Outgoing'].dtype != int:
-    #     merged_df_single_obj_optim_TN['Outgoing'] = merged_df_single_obj_optim_TN['Outgoing'].astype(int)
+    
+    # process the merged_df_single_obj_optim_TN dataframe using the function, process_target_reaches under SWAT_utils.py
+    merged_df_single_obj_optim_TN = process_target_reaches(merged_df_single_obj_optim_TN,
+                                                           final_columns_format_TN,
+                                                           Years_x= Years_x,
+                                                              Years_y= Years_y)
 
+    # round up Area to the nearest integer
+    merged_df_single_obj_optim_TN['Area_acres'] = merged_df_single_obj_optim_TN['Area_acres'].apply(np.ceil).astype(int)
+
+    # check Area_acres column for near zero value, assign 1 to it
+    for i in range(len(merged_df_single_obj_optim_TN)):
+        if merged_df_single_obj_optim_TN['Area_acres'].iloc[i] < 1 and merged_df_single_obj_optim_TN['Outgoing'].iloc[i] != '':
+            print(f"Warning: Area_acres for REACH {merged_df_single_obj_optim_TN['REACH'].iloc[i]} is less than 1. Setting it to 1.")
+            merged_df_single_obj_optim_TN['Area_acres'].iloc[i] = 1
 
     final_out_file_TN = 'SWAT_final_output_single_obj_optim_TN.csv'
     final_out_file_TN = os.path.join(Outputs_path, final_out_file_TN)
@@ -455,6 +527,8 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
 
     ###################################################################################
     unique_LUID_TN = merged_df_single_obj_optim_TN['LUID'].unique()
+    # remove LUID that is empty
+    unique_LUID_TN = [luid for luid in unique_LUID_TN if luid != '']
     unique_LUID_TN = np.array(unique_LUID_TN, dtype=int)
     # create a new dataframe given by unique_LUID_TN and data type is integer
     unique_LUID_TN = pd.DataFrame(unique_LUID_TN, columns=['LUID']) 
@@ -465,11 +539,10 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
     final_out_file_TN = os.path.join(Outputs_path, final_out_file_TN)
     unique_LUID_TN.to_csv(final_out_file_TN, index=False, header=True)
 
-
 if __name__ == "__main__":
     #srun --nodes=1 --partition=general --pty /bin/bash
     # test with small inputs.
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 1:
         print("Usage: python SWAT_Network_Automation_TN.py <time_periods> <working_path>")
         print("Example: python SWAT_Network_Automation_TN.py '2018, 2020' /path/to/working_directory")
         time_periods = None

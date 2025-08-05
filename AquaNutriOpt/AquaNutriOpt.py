@@ -341,9 +341,9 @@ class EPA:
         self.singleObjResults = []
         sys.setrecursionlimit(3000)
         if self.TimePeriod <= 4:
-            BigM = 99999
+            BigM = 9999999
         else:
-            BigM = 999999
+            BigM = 999999999
         epsilon = 0.000001
         self.Writefiles = False
 
@@ -1018,7 +1018,7 @@ class EPA:
                 return
             else:
                 print(
-                    "The entered location '{}' does exit not in the imported network. Make sure you enter a string.".format(
+                    "The entered location '{}' does exit not in the imported network. Make sure you enter correct target location in a string (enclosed in '').".format(
                         location))
                 return
         self.L = location
@@ -1056,10 +1056,11 @@ class EPA:
                     return
 
             self.ZZp = Measures  # Set of bounded measures
+
             self.Um = {}
             for i in range(len(self.ZZp)):
                 self.Um[self.ZZp[i]] = self.BigBound
-
+            #self.ZZ = [itm for itm in self.MM if itm not in self.ZZp]
             self.Corrected_Bound(Bounds)
 
         elif obj == 'MO':
@@ -1363,6 +1364,7 @@ class EPA:
 
         budget = self.C
         objective = self.ZZ[0]
+        #print("***",objective,"***")
         #for items in self.ZZp:  # limit people to put only 1 bounded measure
         #self.Corrected_boundLoad = [0 for i in range(len(self.ZZp))]
 
@@ -1388,6 +1390,7 @@ class EPA:
 
         for i in range(len(Corrected_boundLoad)):
             self.Um[self.ZZp[i]] = Corrected_boundLoad[i]
+            print("Corrected Bound Load for optimization model purpose set to", Corrected_boundLoad[i])
 
         #file = open(save_dir + '/' + 'correctedBound.txt', 'w+')
 
@@ -1410,7 +1413,7 @@ class EPA:
 
         if self.C == 0:
             file = open(filepath, 'w+')
-            file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.baseLoad))
+            file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.TargetLoad))
             file.close()
 
         elif self.C != 0:

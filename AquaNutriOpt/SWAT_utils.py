@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import numpy as np
 import os
@@ -605,3 +606,125 @@ def write_node_data_to_csv(graph, json_data, csv_filename):
             
             print(f"SUB: {SUB}, Ingoing: {ingoing}, Outgoing: {outgoing}")
             writer.writerow({'SUB': SUB, 'Ingoing': ingoing, 'Outgoing': outgoing})
+
+
+def process_target_reaches(merged_df_single_obj_optim_TN, 
+                           final_columns_format,
+                           Years_x, 
+                           Years_y):
+    """
+    - Identify and process target reaches (nodes with no outgoing reaches) in the network.
+    Appends a summary row for the target reach to the DataFrame.
+
+    - Target Node Requirement: The network file must contain a single target node. 
+    If there are multiple nodes with no outgoing node, a dummy node should be created and connected to all such nodes, serving as the unified target node.
+
+    - Update rule:
+        -  The phosphorus or nitrogen will be summed for all reaches that are connected to the target reach,
+        - No LUID or Area_acres will be assigned to the target reach,
+        - The percent_TN_tons_by_REACH will be set to 0 for the target reach.
+
+    Parameters:
+        merged_df_single_obj_optim_TN (pd.DataFrame): The DataFrame containing reach network info.
+        Years_x (list): List of year columns for TP.
+        Years_y (list): List of year columns for TN.
+
+    Returns:
+        pd.DataFrame: The updated DataFrame with the target reach row appended.
+    """
+    Single_Target_Reach = 0
+    Dummy_Target_Reach = 99999
+
+    Target_Reaches_Ingoing = {}
+    Target_Reaches_Outgoing = {}
+    Final_Target_Reach_Ingoing = {}
+    Final_Target_Reach_Outgoing = {}
+
+    # Find target reaches (no outgoing)
+    for i in range(len(merged_df_single_obj_optim_TN)):
+        if merged_df_single_obj_optim_TN['Outgoing'].iloc[i] == '':
+            if merged_df_single_obj_optim_TN['REACH'].iloc[i] not in Target_Reaches_Outgoing:
+                Target_Reaches_Outgoing[merged_df_single_obj_optim_TN['REACH'].iloc[i]] = merged_df_single_obj_optim_TN['Outgoing'].iloc[i]
+                Target_Reaches_Ingoing[merged_df_single_obj_optim_TN['REACH'].iloc[i]] = merged_df_single_obj_optim_TN['Ingoing'].iloc[i]
+
+    # Analyze and finalize target reaches
+    if len(Target_Reaches_Outgoing) > 1:
+        print("Warning: There are multiple target reaches with no outgoing reaches.")
+        reaches = list(Target_Reaches_Outgoing.keys())
+        Final_Target_Reach_Ingoing[Dummy_Target_Reach] = reaches
+        Final_Target_Reach_Outgoing[Dummy_Target_Reach] = ''
+        if len(Final_Target_Reach_Ingoing) > 1:
+            print("Error: Case -  len(Target_Reaches_Outgoing) > 1. There are still multiple target reaches with no outgoing reaches.")
+    elif len(Target_Reaches_Outgoing) == 1:
+        print(f"Information: The single target node requirement is satisfied at reach {list(Target_Reaches_Outgoing.keys())[0]}.")
+        return merged_df_single_obj_optim_TN
+    else:
+        #empty Target_Reaches_Outgoing
+        if Single_Target_Reach not in merged_df_single_obj_optim_TN['REACH'].values:
+            reaches = []
+            for i in range(len(merged_df_single_obj_optim_TN)):
+                outGoings = merged_df_single_obj_optim_TN['Outgoing'].iloc[i]
+                for rch in outGoings.split(" "):
+                    if Single_Target_Reach == int(rch):
+                        reaches.append(merged_df_single_obj_optim_TN['REACH'].iloc[i])
+            Final_Target_Reach_Ingoing[Single_Target_Reach] = reaches
+            Final_Target_Reach_Outgoing[Single_Target_Reach] = ''
+            if len(Final_Target_Reach_Ingoing) != 1:
+                print("Error: Case -  len(Target_Reaches_Outgoing) == 0. There are still multiple target reaches with no outgoing reaches.")
+
+    # 
+    # Dummy target node
+    
+    for key in Final_Target_Reach_Ingoing:
+        new_row = {}
+        new_row['REACH'] = key
+        Ingoing = ''
+        for rch in Final_Target_Reach_Ingoing[key]:
+            rch = str(rch)
+            Ingoing = rch if Ingoing == '' else Ingoing + ' ' + rch
+        new_row['Ingoing'] = Ingoing
+        new_row['Outgoing'] = ''
+        new_row['Ratio'] = ''
+        for year in Years_x:
+            new_row[year] = 0.0
+            # for rch in Final_Target_Reach_Ingoing[key]:
+            #     if rch in merged_df_single_obj_optim_TN['REACH'].values:
+            #         new_row[year] += merged_df_single_obj_optim_TN.loc[merged_df_single_obj_optim_TN['REACH'] == rch, year].values[0]
+        for year in Years_y:
+            new_row[year] = 0.0
+            # for rch in Final_Target_Reach_Ingoing[key]:
+            #     if rch in merged_df_single_obj_optim_TN['REACH'].values:
+            #         new_row[year] += merged_df_single_obj_optim_TN.loc[merged_df_single_obj_optim_TN['REACH'] == rch, year].values[0]
+        new_row['LUID'] = ''
+        new_row['Area_acres'] = 0
+        if 'percent_TP_tons_by_REACH' in merged_df_single_obj_optim_TN.columns:
+            new_row['percent_TP_tons_by_REACH'] = 0
+        elif 'percent_TN_tons_by_REACH' in merged_df_single_obj_optim_TN.columns:
+            new_row['percent_TN_tons_by_REACH'] = 0
+        elif 'TP_percent' and 'TN_percent' in merged_df_single_obj_optim_TN.columns:
+            new_row['TP_percent'] = 0
+            new_row['TN_percent'] = 0
+        else:
+            print("Output File Format Error.")
+            sys.exit("Exiting program.")
+        merged_df_single_obj_optim_TN = pd.concat([merged_df_single_obj_optim_TN, pd.DataFrame([new_row])], ignore_index=True)
+
+    # for each target node key, in the Final_Target_Reach_Ingoing dict
+    for target_node in Final_Target_Reach_Ingoing:
+        # for each ingoing node
+        for ingoing_node in Final_Target_Reach_Ingoing[target_node]:
+            # check if its Outgoing is empty using a for loop
+            for i in range(len(merged_df_single_obj_optim_TN)):
+                if merged_df_single_obj_optim_TN['REACH'].iloc[i] == ingoing_node:
+                    # if it is empty, set it to the target node
+                    if merged_df_single_obj_optim_TN['Outgoing'].iloc[i] == '':
+                        merged_df_single_obj_optim_TN.at[i, 'Outgoing'] = str(target_node)
+                    else:
+                        # if not empty, check if the target node is already in the Outgoing
+                        if str(target_node) not in merged_df_single_obj_optim_TN['Outgoing'].iloc[i]:
+                            # if not, append the target node to the Outgoing
+                            merged_df_single_obj_optim_TN.at[i, 'Outgoing'] += ' ' + str(target_node)
+
+
+    
+    return merged_df_single_obj_optim_TN
