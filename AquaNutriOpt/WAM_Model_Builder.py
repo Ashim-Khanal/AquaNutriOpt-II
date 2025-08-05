@@ -15,13 +15,20 @@ import pandas as pd
 
 def wam_model_builder(
     working_path: str,
-    land_use_shapefile_name: str = 'Land_Use.shp',
-    stream_node_raster_name: str = 'Streamnode.asc',
-    uk_raster_name: str = 'UK_TP_Existing.tif',
     nutrient: str = 'P',
-    output_watershed_subbasin_land_use_name: str = 'Watershed_Subbasin_LU_TP.xlsx',
+    output_name: str = None,
+    nutrient_raster: str = None,
+    land_use_file: str = 'Land_Use.shp',
+    stream_raster: str = 'Streamnode.asc',
     ):
     gdal.PushErrorHandler('CPLQuietErrorHandler')
+
+    # Auto-generate filenames based on nutrient
+    if output_name is None:
+        output_name = f'Watershed_Subbasin_LU_T{nutrient}.xlsx'
+    
+    if nutrient_raster is None:
+        nutrient_raster = f'T{nutrient}_Existing.tif'
 
     ######## Step 01: Run gdal_polygonize ################ 
     print("Step 1 - Run gdal_polygonize")
@@ -52,7 +59,7 @@ def wam_model_builder(
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = stream_node_raster_name 
+    raster_path = stream_raster 
     raster_path = os.path.join(Inputs_path, raster_path)
     raster = gdal.Open(raster_path)
     srcBand = raster.GetRasterBand(1)  # Use Band 1 for polygonization
@@ -145,7 +152,7 @@ def wam_model_builder(
     if os.path.exists(fix_vector_path):
         driver.DeleteDataSource(fix_vector_path)  # Remove existing file
 
-    ds_path = land_use_shapefile_name
+    ds_path = land_use_file
     ds_path = os.path.join(Inputs_path, ds_path)
 
     ds = ogr.Open(ds_path, 1)  # Return a ogr.DataSource object
@@ -323,7 +330,7 @@ def wam_model_builder(
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = uk_raster_name  # Replace with your actual file path
+    raster_path = nutrient_raster  # Replace with your actual file path
     raster_path = os.path.join(Inputs_path, raster_path)
     raster_ds = gdal.Open(raster_path) # return a gdal.Dataset object
     TP_band = raster_ds.GetRasterBand(1)
@@ -507,7 +514,7 @@ def wam_model_builder(
     # ####################Step 07: Group By####################################
     print(10*"-", "Group by the New_Sub_LU_TP.shp by LUID, B_GRIDCODE and compute the sum of AREA, and PHOSPHORUS ", 10*"-")
     # export to a Excel file
-    out_path = output_watershed_subbasin_land_use_name
+    out_path = output_name
     out_path = os.path.join(Outputs_path, out_path)
 
     # Open the shapefile
