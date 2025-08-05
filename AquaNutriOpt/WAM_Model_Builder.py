@@ -52,7 +52,7 @@ def wam_model_builder(
     if os.path.exists(vector_path):
         driver.DeleteDataSource(vector_path)  # Remove existing file
 
-    raster_path = stream_node_raster_name
+    raster_path = stream_node_raster_name 
     raster_path = os.path.join(Inputs_path, raster_path)
     raster = gdal.Open(raster_path)
     srcBand = raster.GetRasterBand(1)  # Use Band 1 for polygonization
@@ -434,7 +434,9 @@ def wam_model_builder(
 
     subbasins_land_use_uk_tp_pt['index_right'] = subbasins_land_use_uk_tp_pt['index_right'].fillna(0).astype(int)
 
-    subbasins_land_use_uk_tp_pt['GRIDCODE'] = subbasins_land_use_uk_tp_pt['GRIDCODE'].fillna(0).astype(int)
+    # Set the 'GRIDCODE' column to 0.0 if it is NaN
+    subbasins_land_use_uk_tp_pt['GRIDCODE'] = subbasins_land_use_uk_tp_pt['GRIDCODE'].fillna(0.0)
+    # subbasins_land_use_uk_tp_pt['GRIDCODE'] = subbasins_land_use_uk_tp_pt['GRIDCODE'].fillna(0).astype(int)
 
     #subbasins_land_use_uk_tp_pt.head(1)
 
@@ -503,7 +505,7 @@ def wam_model_builder(
 
 
     # ####################Step 07: Group By####################################
-    print(10*"-", "Group by the New_Sub_LU_TP.shp by LUID, B_GRIDCODE and compute the sum of AREA, and GRIDCODE ", 10*"-")
+    print(10*"-", "Group by the New_Sub_LU_TP.shp by LUID, B_GRIDCODE and compute the sum of AREA, and PHOSPHORUS ", 10*"-")
     # export to a Excel file
     out_path = output_watershed_subbasin_land_use_name
     out_path = os.path.join(Outputs_path, out_path)
@@ -515,47 +517,101 @@ def wam_model_builder(
     ds = ogr.Open(ds_path, 1)  # Write; Return a ogr.DataSource object
     layer = ds.GetLayer()  # Return a ogr
 
-    # Create a dictionary to store the results
+    # # Create a dictionary to store the results
+    # results = {}
+    # for feature in layer:
+    #     luid = feature.GetField("LUID")
+    #     gridcode = feature.GetField("B_GRIDCODE")
+    #     area = feature.GetField("AREA")
+    #     phosphorus = feature.GetField("GRIDCODE")  # Assuming GRIDCODE is the phosphorus value
+
+    #     if luid not in results:
+    #         results[luid] = {}
+        
+    #     if gridcode not in results[luid]:
+    #         results[luid][gridcode] = {"Area_ft2": 0, f"T{nutrient}_kg/ha": 0}
+        
+    #     results[luid][gridcode]["Area_ft2"] += area
+    #     results[luid][gridcode][f"T{nutrient}_kg/ha"] += phosphorus
+
+    # # close the shapefile
+    # feature = None
+    # layer = None
+    # ds = None
+
+    # # Create a pandas DataFrame from the dictionary
+    # df = pd.DataFrame.from_dict({(i,j): results[i][j] 
+    #                             for i in results.keys() 
+    #                             for j in results[i].keys()},
+    #                             orient='index')
+
+    # # print(df.info())
+    # # create a new column Area_acres
+    # df["Area_ac"] = df["Area_ft2"] * 0.0000229568
+
+    # # Reset the index
+    # df.reset_index(inplace=True)
+    # df.rename(columns={"level_0": "LUID", "level_1": "REACH"}, inplace=True)
+
+    # # re-arrange the column orders: "LUID", "REACH", "Area_ft2", "Area_ac", "T_nutrient_kg/ha"
+    # df = df[["LUID", "REACH", "Area_ft2", "Area_ac", f"T{nutrient}_kg/ha"]]
+
+    # Create a dictionary to store the results OSAMA_EDITS
     results = {}
     for feature in layer:
         luid = feature.GetField("LUID")
         gridcode = feature.GetField("B_GRIDCODE")
         area = feature.GetField("AREA")
+        phosphorus = feature.GetField("GRIDCODE")  # Assuming GRIDCODE is the phosphorus value
 
         if luid not in results:
             results[luid] = {}
-        
-        if gridcode not in results[luid]:
-            results[luid][gridcode] = {"Area_ft2": 0, f"T{nutrient}_kg/ha": 0}
-        
-        results[luid][gridcode]["Area_ft2"] += area
-        results[luid][gridcode][f"T{nutrient}_kg/ha"] += gridcode
 
-    # close the shapefile
+        if gridcode not in results[luid]:
+            results[luid][gridcode] = {
+                "Area_ft2": 0,
+                f"T{nutrient}_sum": 0,
+                f"T{nutrient}_count": 0
+            }
+
+        results[luid][gridcode]["Area_ft2"] += area
+        results[luid][gridcode][f"T{nutrient}_sum"] += phosphorus
+        results[luid][gridcode][f"T{nutrient}_count"] += 1
+
+    # Compute the average and replace the sum/count with average
+    for luid in results:
+        for gridcode in results[luid]:
+            total = results[luid][gridcode][f"T{nutrient}_sum"]
+            count = results[luid][gridcode][f"T{nutrient}_count"]
+            avg = total / count if count != 0 else 0
+            results[luid][gridcode][f"T{nutrient}_kg/ha"] = avg
+            # Remove intermediate values
+            del results[luid][gridcode][f"T{nutrient}_sum"]
+            del results[luid][gridcode][f"T{nutrient}_count"]
+
+    # Close the shapefile
     feature = None
     layer = None
     ds = None
 
     # Create a pandas DataFrame from the dictionary
-    df = pd.DataFrame.from_dict({(i,j): results[i][j] 
-                                for i in results.keys() 
-                                for j in results[i].keys()},
-                                orient='index')
+    df = pd.DataFrame.from_dict(
+        {(i, j): results[i][j] for i in results.keys() for j in results[i].keys()},
+        orient='index'
+    )
 
-    print(df.info())
-    # create a new column Area_acres
+    # Add Area in acres
     df["Area_ac"] = df["Area_ft2"] * 0.0000229568
 
-    # Reset the index
+    # Reset the index and rename columns
     df.reset_index(inplace=True)
     df.rename(columns={"level_0": "LUID", "level_1": "REACH"}, inplace=True)
 
-    # re-arrange the column orders: "LUID", "REACH", "Area_ft2", "Area_ac", "TP_kg/ha"
+    # Reorder columns
     df = df[["LUID", "REACH", "Area_ft2", "Area_ac", f"T{nutrient}_kg/ha"]]
 
     # Save the DataFrame to an Excel file without the integer index
-    df.to_excel(out_path, index=False)
-
+    df.to_excel(out_path, index=True)
 
 
 
