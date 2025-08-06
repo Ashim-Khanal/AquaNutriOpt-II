@@ -20,17 +20,9 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     # 1. Need to check LUID column of the final output for any blank value. If yes, need to update the input file. (LUID.xlsx.)
     ##################################
 
-
-
-    # In[5]:
-
-
     Swat_path = os.path.join(working_path, 'SWAT')
     Inputs_path = os.path.join(Swat_path, 'Inputs')
     Outputs_path = os.path.join(Swat_path, 'Outputs')
-
-
-
 
 
     if not os.path.exists(Swat_path):
@@ -41,10 +33,6 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     if not os.path.exists(Inputs_path):
         print(f"Create {Inputs_path} in the current working directory!")
         os.makedirs(Inputs_path)
-
-
-
-
 
     # data for computing TP, TN
     input_TP_filename = 'SWAT_rch.xlsx'
@@ -58,17 +46,12 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     # subbasin_TN_input_file = os.path.join(Inputs_path, input_TN_filename)
 
 
-
-
     # data for create the reach graph
     data_dir = 'SWAT/Inputs/Reaches'
     if not os.path.exists(os.path.join(working_path, data_dir)):
         print(f"Error: Directory '{data_dir}' does not exist in the current working directory!")
         sys.exit("Exiting program.")
     data_dir = os.path.join(working_path, data_dir)
-
-
-
 
     # create output folder
     if not os.path.exists(Outputs_path):
@@ -277,7 +260,7 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
 
     #calculate the Area_ac
     Watershed_annual_subbasin_df['Area_ac'] = Watershed_annual_subbasin_df['AREAkm2'] * 247.105
-    Watershed_annual_subbasin_df['Area_ac'] = Watershed_annual_subbasin_df['Area_ac'].apply(np.ceil).astype(int)
+    # Watershed_annual_subbasin_df['Area_ac'] = Watershed_annual_subbasin_df['Area_ac'].astype(int)
 
     Watershed_annual_subbasin_df['Area_ha'] = Watershed_annual_subbasin_df['AREAkm2'] * 100
 
@@ -309,10 +292,15 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
             print(f"Error: Column '{col}' does not exist in Watershed_annual_subbasin_df!")
             sys.exit("Exiting program.")
 
+    # export Watershed_annual_subbasin_df to csv file
+    # Watershed_annual_subbasin_df.to_csv(os.path.join(Outputs_path, 'Watershed_annual_subbasin_df.csv'), index=False)
     # # Pivot table
     pivotT = Watershed_annual_subbasin_df.pivot_table(values=cols_to_summarize, 
                                             index=cols_to_group_by,
                                         aggfunc=sum)
+    
+    # export pivotT to csv file
+    # pivotT.to_csv(os.path.join(Outputs_path, 'Watershed_annual_subbasin_df_pivot.csv'))
 
     pivotT['percent_TP_tons_by_REACH'] = (pivotT['TP_tons'])/(pivotT.groupby(level='REACH')['TP_tons'].transform(sum))
 
@@ -324,27 +312,6 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
 
     # pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
 
-
-    # # single objective optimization
-
-    # # TP
-    # pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH']
-    # hru_df_single_obj_opti_TP = process_single_multi_obj_data(pivotT, 
-    #                               'TP',
-    #                               'single_obj', 
-    #                               COLUMNS_TO_DROP, 
-    #                               COLUMNS_TO_KEEP_TP, 
-    #                               out5_TP)
-
-
-    # TN
-    # pivotT['sum_percent_TP_TN'] = pivotT['percent_TN_tons_by_REACH']
-    # hru_df_single_obj_opti_TN = process_single_multi_obj_data(pivotT, 
-    #                               'TN',
-    #                               'single_obj', 
-    #                               COLUMNS_TO_DROP, 
-    #                               COLUMNS_TO_KEEP_TN, 
-    #                               out5_TN)
     # # TP_TN
     pivotT['sum_percent_TP_TN'] = pivotT['percent_TP_tons_by_REACH'] + pivotT['percent_TN_tons_by_REACH']
     hru_df_multiple_obj_opti_TP_TN = process_single_multi_obj_data(pivotT, 
@@ -485,8 +452,8 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     ###################################################################################
 
     ########################################################################################## 7. Save the final output files
-    if type(merged_df_multi_obj_optim['Area_acres']) != int:
-        merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].astype(int)
+    # if type(merged_df_multi_obj_optim['Area_acres']) != int:
+    #     merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].astype(int)
 
     # rename 'percent_TP_tons_by_REACH' to 'TP_percent'
     merged_df_multi_obj_optim.rename(columns={'percent_TP_tons_by_REACH': 'TP_percent'}, inplace=True)
@@ -507,25 +474,6 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
                                             left_on='LUID',
                                             right_on='swat_code')
 
-    # loop through the rows of merged_df_single_obj_optim_TP
-    # if LUID is 'CORN', then landuse_id is '99990'.
-    # elif LUID is 'OATS', then landuse_id is '99991'.
-    # otherwise, do nothing
-    # reset the index of merged_df_single_obj_optim_TP to integer based.
-
-    # merged_df_multi_obj_optim.reset_index(drop=True, inplace=True)
-    # for i in range(len(merged_df_multi_obj_optim)):
-    #     if merged_df_multi_obj_optim['LUID'].iloc[i] == 'CORN':
-    #         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 99990
-    #     elif merged_df_multi_obj_optim['LUID'].iloc[i] == 'OATS':
-    #         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 99991
-    #     #elif the landuse_id is blank or null, then set it to 9999
-    #     elif pd.isnull(merged_df_multi_obj_optim['landuse_id'].iloc[i]):
-    #         merged_df_multi_obj_optim['landuse_id'].iloc[i] = 9999
-    #     else:
-    #         pass
-
-
     final_columns_format_TP_TN = ['REACH', 'Ingoing', 'Outgoing', 'Ratio'] + Years_x + Years_y +  ['WAM_LUID', 'Area_acres', 'TP_percent', 'TN_percent']
     merged_df_multi_obj_optim = merged_df_multi_obj_optim[final_columns_format_TP_TN]
 
@@ -534,14 +482,33 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     if merged_df_multi_obj_optim['LUID'].dtype != int:
         merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].astype(int)
 
-
+    # # process the merged_df_single_obj_optim_TP dataframe using the function, process_target_reaches under SWAT_utils.py
+    merged_df_multi_obj_optim = process_target_reaches(merged_df_multi_obj_optim,
+                                                       final_columns_format_TP_TN,
+                                                        Years_x= Years_x,
+                                                        Years_y= Years_y)
+    
+    
     ######################################################
+    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].apply(np.ceil).astype(int)
+
+    # check Area_acres column for near zero value, assign 1 to it
+    for i in range(len(merged_df_multi_obj_optim)):
+        if merged_df_multi_obj_optim['Area_acres'].iloc[i] < 1 and merged_df_multi_obj_optim['Outgoing'].iloc[i] != '':
+            #print REACH with Area_acres < 1
+            print(f"Warning: Reach {merged_df_multi_obj_optim['REACH'].iloc[i]} has Area_acres < 1, setting to 1")
+            merged_df_multi_obj_optim['Area_acres'].iloc[i] = 1
+
+    
+    ##################################################
     final_out_file_TP = 'SWAT_final_output_multiple_obj_optim.csv'
     final_out_file_TP = os.path.join(Outputs_path, final_out_file_TP)
     merged_df_multi_obj_optim.to_csv(final_out_file_TP, index=False, header=True)
 
     ###################################################################################
     unique_LUID_TP = merged_df_multi_obj_optim['LUID'].unique()
+    # remove any LUID that is empty
+    unique_LUID_TP = unique_LUID_TP[unique_LUID_TP != '']
     unique_LUID_TP = np.array(unique_LUID_TP, dtype=int)
     # create a new dataframe given by unique_LUID_TN and data type is integer
     unique_LUID_TP = pd.DataFrame(unique_LUID_TP, columns=['LUID']) 
@@ -556,7 +523,7 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
 if __name__ == "__main__":
     #srun --nodes=1 --partition=general --pty /bin/bash
     # test with small inputs.
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 1:
         print("Usage: python SWAT_Network_Automation_MO.py <time_periods> <working_path>")
         print("Example: python SWAT_Network_Automation_MO.py '2018, 2020' /path/to/working_directory")
         time_periods = None
