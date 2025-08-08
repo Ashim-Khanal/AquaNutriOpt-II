@@ -1410,7 +1410,9 @@ class EPA:
         os.makedirs(save_dir, exist_ok=True)
         filename = 'correctedLoad.txt'
         filepath = os.path.join(save_dir, filename)
-
+        #print("****************Budget is",self.C)
+        # print("****************baseload is", self.baseLoad)
+        print("****************Targetload is", self.TargetLoad)
         if self.C == 0:
             file = open(filepath, 'w+')
             file.write('The corrected optimized {} nutrient loading at the Target Node is {}'.format(self.ZZ[0], self.TargetLoad))
