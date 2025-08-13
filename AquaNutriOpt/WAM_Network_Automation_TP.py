@@ -455,6 +455,7 @@ def WAM_Network_Automation_TP(working_path: str, time_periods: str):
                     Final_Network_TN_df,
                     final_columns_format_TP)
     ####################
+    merged_df_single_obj_optim_TP['LUID'] = merged_df_single_obj_optim_TP['LUID'].fillna(0)
     if type(merged_df_single_obj_optim_TP['LUID']) != int:
         merged_df_single_obj_optim_TP['LUID'] = merged_df_single_obj_optim_TP['LUID'].astype(int)
     
@@ -468,7 +469,7 @@ def WAM_Network_Automation_TP(working_path: str, time_periods: str):
     # Check if Area_acres column is an integer. If not, convert it to an integer.
     ###################
     # # round up the 'Area_acres' in the dataframe to next whole number
-    merged_df_single_obj_optim_TP['Area_acres'] = merged_df_single_obj_optim_TP['Area_acres'].apply(np.ceil).astype(int)
+    merged_df_single_obj_optim_TP['Area_acres'] = merged_df_single_obj_optim_TP['Area_acres'].fillna(0).apply(np.ceil).astype(int)
     # for each row in the merged_df_single_obj_optim_TP['REACH'] column,
     # if the area is less than 1 and the Outgoing is not empty, then set the area to 1
     for i in range(len(merged_df_single_obj_optim_TP)):

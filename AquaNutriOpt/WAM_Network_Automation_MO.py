@@ -470,6 +470,7 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
                                                                 Final_Network_TN_df,
                                                                 final_columns_format_TP_TN)
 
+    merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].fillna(0)
     if type(merged_df_multi_obj_optim['LUID']) != int:
         merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].astype(int)
 
@@ -482,8 +483,7 @@ def wam_network_automation_mo(working_path: str, time_periods: str):
 
     #####################
     # round up the 'Area_acres' in the dataframe to next whole number
-    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].apply(
-        np.ceil).astype(int)
+    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].fillna(0).apply(np.ceil).astype(int)
     
     # for each row in the merged_df_multi_obj_optim['REACH'] column,
     # if the area is less than 1 and the Outgoing is not empty, then set the area to 1
