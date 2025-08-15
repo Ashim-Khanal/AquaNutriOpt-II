@@ -530,6 +530,7 @@ def swat_network_automation_tp(working_path: str, time_periods: str):
         print(non_finite_luid)
 
     #if type of LUID is not integer, LUID is integer
+    merged_df_single_obj_optim_TP['LUID'] = merged_df_single_obj_optim_TP['LUID'].fillna(99999)
     if type(merged_df_single_obj_optim_TP['LUID']) != int:
         merged_df_single_obj_optim_TP['LUID'] = merged_df_single_obj_optim_TP['LUID'].astype(int)
 
@@ -541,12 +542,15 @@ def swat_network_automation_tp(working_path: str, time_periods: str):
 
     ##################
     # round up the 'Area_acres' in the dataframe to next whole number
-    merged_df_single_obj_optim_TP['Area_acres'] = merged_df_single_obj_optim_TP['Area_acres'].apply(np.ceil).astype(int)
+    merged_df_single_obj_optim_TP['Area_acres'] = merged_df_single_obj_optim_TP['Area_acres'].fillna(1).apply(np.ceil).astype(int)
     for i in range(len(merged_df_single_obj_optim_TP)):
         if merged_df_single_obj_optim_TP['Area_acres'].iloc[i] < 1 and merged_df_single_obj_optim_TP['Outgoing'].iloc[i] != '':
             #print REACH with Area_acres < 1
             print(f"Warning: Reach {merged_df_single_obj_optim_TP['REACH'].iloc[i]} has Area_acres < 1, setting to 1")
             merged_df_single_obj_optim_TP['Area_acres'].iloc[i] = 1
+
+    # Ensure no NaN values in merged_df_single_obj_optim_TP's percent_TP_tons_by_REACH column
+    merged_df_single_obj_optim_TP['percent_TP_tons_by_REACH'] = merged_df_single_obj_optim_TP['percent_TP_tons_by_REACH'].fillna(0.0001)
 
     ####################
     

@@ -479,6 +479,8 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
 
     #rename the 'landuse_id' column to 'LUID'
     merged_df_multi_obj_optim.rename(columns={'WAM_LUID': 'LUID'}, inplace=True)
+    
+    merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].fillna(99999)
     if merged_df_multi_obj_optim['LUID'].dtype != int:
         merged_df_multi_obj_optim['LUID'] = merged_df_multi_obj_optim['LUID'].astype(int)
 
@@ -490,7 +492,7 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     
     
     ######################################################
-    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].apply(np.ceil).astype(int)
+    merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].fillna(1).apply(np.ceil).astype(int)
 
     # check Area_acres column for near zero value, assign 1 to it
     for i in range(len(merged_df_multi_obj_optim)):
@@ -499,7 +501,10 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
             print(f"Warning: Reach {merged_df_multi_obj_optim['REACH'].iloc[i]} has Area_acres < 1, setting to 1")
             merged_df_multi_obj_optim['Area_acres'].iloc[i] = 1
 
-    
+    # Ensure no NaN values in merged_df_multi_obj_optim's percent_TP_tons_by_REACH and percent_TN_tons_by_REACH columns
+    merged_df_multi_obj_optim['percent_TP_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TP_tons_by_REACH'].fillna(0.0001)
+    merged_df_multi_obj_optim['percent_TN_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TN_tons_by_REACH'].fillna(0.0001)
+
     ##################################################
     final_out_file_TP = 'SWAT_final_output_multiple_obj_optim.csv'
     final_out_file_TP = os.path.join(Outputs_path, final_out_file_TP)
