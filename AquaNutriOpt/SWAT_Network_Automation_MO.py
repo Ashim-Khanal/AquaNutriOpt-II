@@ -455,6 +455,10 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     # if type(merged_df_multi_obj_optim['Area_acres']) != int:
     #     merged_df_multi_obj_optim['Area_acres'] = merged_df_multi_obj_optim['Area_acres'].astype(int)
 
+    # Ensure no NaN values in merged_df_multi_obj_optim's percent_TP_tons_by_REACH and percent_TN_tons_by_REACH columns
+    merged_df_multi_obj_optim['percent_TP_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TP_tons_by_REACH'].fillna(0.0001)
+    merged_df_multi_obj_optim['percent_TN_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TN_tons_by_REACH'].fillna(0.0001)
+
     # rename 'percent_TP_tons_by_REACH' to 'TP_percent'
     merged_df_multi_obj_optim.rename(columns={'percent_TP_tons_by_REACH': 'TP_percent'}, inplace=True)
 
@@ -500,10 +504,6 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
             #print REACH with Area_acres < 1
             print(f"Warning: Reach {merged_df_multi_obj_optim['REACH'].iloc[i]} has Area_acres < 1, setting to 1")
             merged_df_multi_obj_optim['Area_acres'].iloc[i] = 1
-
-    # Ensure no NaN values in merged_df_multi_obj_optim's percent_TP_tons_by_REACH and percent_TN_tons_by_REACH columns
-    merged_df_multi_obj_optim['percent_TP_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TP_tons_by_REACH'].fillna(0.0001)
-    merged_df_multi_obj_optim['percent_TN_tons_by_REACH'] = merged_df_multi_obj_optim['percent_TN_tons_by_REACH'].fillna(0.0001)
 
     ##################################################
     final_out_file_TP = 'SWAT_final_output_multiple_obj_optim.csv'
