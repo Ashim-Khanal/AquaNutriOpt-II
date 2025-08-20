@@ -502,6 +502,7 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
     merged_df_single_obj_optim_TN.rename(columns={'WAM_LUID': 'LUID'}, inplace=True)
 
     #if type of LUID is not integer, LUID is integer
+    merged_df_single_obj_optim_TN['LUID'] = merged_df_single_obj_optim_TN['LUID'].fillna(99999)
     if type(merged_df_single_obj_optim_TN['LUID']) != int:
         merged_df_single_obj_optim_TN['LUID'] = merged_df_single_obj_optim_TN['LUID'].astype(int)
 
@@ -513,7 +514,7 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
                                                               Years_y= Years_y)
 
     # round up Area to the nearest integer
-    merged_df_single_obj_optim_TN['Area_acres'] = merged_df_single_obj_optim_TN['Area_acres'].apply(np.ceil).astype(int)
+    merged_df_single_obj_optim_TN['Area_acres'] = merged_df_single_obj_optim_TN['Area_acres'].fillna(1).apply(np.ceil).astype(int)
 
     # check Area_acres column for near zero value, assign 1 to it
     for i in range(len(merged_df_single_obj_optim_TN)):
@@ -521,6 +522,9 @@ def swat_network_automation_tn(working_path: str, time_periods: str):
             print(f"Warning: Area_acres for REACH {merged_df_single_obj_optim_TN['REACH'].iloc[i]} is less than 1. Setting it to 1.")
             merged_df_single_obj_optim_TN['Area_acres'].iloc[i] = 1
 
+    # Ensure no NaN values in merged_df_single_obj_optim_TN's percent_TN_tons_by_REACH column
+    merged_df_single_obj_optim_TN['percent_TN_tons_by_REACH'] = merged_df_single_obj_optim_TN['percent_TN_tons_by_REACH'].fillna(0.0001)
+    
     final_out_file_TN = 'SWAT_final_output_single_obj_optim_TN.csv'
     final_out_file_TN = os.path.join(Outputs_path, final_out_file_TN)
     merged_df_single_obj_optim_TN.to_csv(final_out_file_TN, index=False, header=True)
