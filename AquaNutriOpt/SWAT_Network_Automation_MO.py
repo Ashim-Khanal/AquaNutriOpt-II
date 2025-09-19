@@ -232,9 +232,39 @@ def swat_network_automation_mo(working_path: str, time_periods: str):
     # #################### 5. Compute TP, TN of the most dominant land usage.
     # input_annual_subbasin_filename = 'hru_small_sub01.xlsx'
     # print(input_annual_subbasin_filename)
-    subbasin_input_file = os.path.join(Inputs_path, input_annual_subbasin_filename)
+    ### process ###########
 
-    Watershed_annual_subbasin_df = pd.read_excel(subbasin_input_file)
+    #process input_annual_subbasin_filename
+    input_annual_subbasin_filename = os.path.join(Inputs_path, 
+                                               input_annual_subbasin_filename)
+
+    df = pd.read_excel(input_annual_subbasin_filename)
+
+    # Drop YEAR and MON since you want averages across them
+    df_no_time = df.drop(columns=["YEAR", "MON"])
+
+    # Define grouping keys (non-numeric identifiers)
+    group_cols = ["LULC", "HRU", "HRUGIS", "SUB"]
+
+    # Take only numeric columns excluding group_cols
+    numeric_cols = [col for col in df_no_time.select_dtypes(include="number").columns if col not in group_cols]
+
+    # Group and average
+    summary = df_no_time.groupby(group_cols)[numeric_cols].mean().reset_index()
+    # # Save summarized result
+    # input_average_subbasin_filename = 'SWAT_HRU_summary.xlsx'
+    # SWAT_HRU_summary_input_file = os.path.join(Inputs_path, 
+    #                                            input_average_subbasin_filename)
+    # summary.to_excel(SWAT_HRU_summary_input_file, index=False)
+
+    # input_annual_subbasin_filename = input_average_subbasin_filename
+
+    # subbasin_input_file = os.path.join(Inputs_path, input_annual_subbasin_filename)
+
+    # Watershed_annual_subbasin_df = pd.read_excel(subbasin_input_file)
+    Watershed_annual_subbasin_df = summary
+
+    # Watershed_annual_subbasin_df.info()
 
     # Watershed_annual_subbasin_df.info()
 
