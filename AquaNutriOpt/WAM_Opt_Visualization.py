@@ -6,8 +6,16 @@
 # 1) The Aqua-nutri-opt output file, 
 # 2) A pre-defined LOOKUP table containing all possible BMPs and their corresponding LU_Base and LU_Code,
 # 3) A LandUse-Subbasin shape file
-# Outputs:
-# A map of the land use with the optimized BMPs for each subbasin
+# Key outputs:
+# 1) A map image of the land use with the optimal subbasins and BMPs
+# 2) A legend image explaining the colors used in the map
+# 3) A GeoJSON file of the land use with the optimal subbasins and BMPs
+# Note: 
+# The matplotlib.show() command is use. The show command allows users to use the Zoom in function to identify those small and difficult-to-see pixel regions.
+# Reference source on how to use the Zoom feature in matplotlib:
+# 1) Text based instruction: https://www.packtpub.com/en-us/learning/how-to-tutorials/introducing-interactive-plotting#:~:text=Pan%20(and%20zoom)%3A%20This,to%20trigger%20a%20file%20save.
+# 2) Video based instruction: https://www.youtube.com/watch?v=tZs7bZTaKf8
+# The GeoJSON file can be visualized using free online tool. For example, https://geojson.io/#map=2/0/20
 ############
 
 import numpy as np
@@ -356,7 +364,7 @@ def visualize_shapefile(gdf,
         save_legend_as_image(color_map, legend_path)
 
     # Show the plot
-    # plt.show()
+    plt.show()
 
     # Close the figure
     plt.close(fig)
