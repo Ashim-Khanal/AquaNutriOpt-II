@@ -41,7 +41,7 @@ def swat_opt_visualization(
     Returns:
         None: The function creates a folder structure and visualizes the data, saving the output as an image and geojson file.
     """
-    Wam_path = os.path.join(working_path, 'WAM_Opt_Visualization')
+    Wam_path = os.path.join(working_path, 'SWAT_Opt_Visualization')
     Inputs_path = os.path.join(Wam_path, 'Inputs')
     Outputs_path = os.path.join(Wam_path, 'Outputs')
 
@@ -109,7 +109,7 @@ def swat_opt_visualization(
     # print(Out_df.shape[0] == df.shape[0])
 
     #######################################################################################
-    WAM_Inputs_path = os.path.join(Inputs_path, 'From_WAM_Model_Generation_Script')
+    WAM_Inputs_path = os.path.join(Inputs_path, 'Subbasin_Landuse_Intersections')
     vector_data_path = os.path.join(WAM_Inputs_path, land_use_subbasin_file)
 
     # Read the shapefile
